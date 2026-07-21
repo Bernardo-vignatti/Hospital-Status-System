@@ -1,0 +1,9 @@
+# Este arquivo era usado quando mudanças em data/status.json passavam por
+# Pull Request. O fluxo atual (Issue → commit direto, ver
+# .github/workflows/update-status.yml) não abre PR, então nenhum workflow
+# aplica este CODEOWNERS automaticamente hoje. Mantido apenas como
+# referência de quem são os responsáveis pelo sistema; pode ser removido
+# se preferir.
+# Exemplo: @joaosilva-ti @mariasantos-ti
+
+data/status.json  @troque-pelo-seu-usuario-admin1 @troque-pelo-seu-usuario-admin2
