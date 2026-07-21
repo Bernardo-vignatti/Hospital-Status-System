@@ -1,1 +1,35 @@
+name: Checagem automática (sistemas digitais)
 
+# Roda a cada 5 minutos (mínimo suportado pelo GitHub Actions) e verifica
+# os sistemas configurados em config/services.json. Sistemas sem URL
+# configurada (enabled=false) são ignorados e permanecem em modo manual,
+# via Issue (ver update-status.yml).
+#
+# O commit é feito direto: é uma medição objetiva e automática, não uma
+# decisão humana que precise de aprovação.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/check-http.js
+      - run: node scripts/validate.js
+      - name: Commit se houver mudança
+        run: |
+          git config user.name "status-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/status.json
+          git diff --quiet --cached || git commit -m "chore: checagem automática de status"
+          git push
