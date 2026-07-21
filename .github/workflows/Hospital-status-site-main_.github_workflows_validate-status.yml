@@ -1,0 +1,18 @@
+name: Validar status.json
+
+on:
+  pull_request:
+    paths: ['data/status.json', 'config/services.json']
+  push:
+    branches: [main]
+    paths: ['data/status.json', 'config/services.json']
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node scripts/validate.js
