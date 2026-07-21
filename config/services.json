@@ -1,0 +1,12 @@
+{
+  "_comment": "Fonte única de configuração dos serviços monitorados. Para adicionar um novo serviço: acrescente um item aqui E um item correspondente (mesmo id) em data/status.json. 'url'/'enabled' controlam a checagem automática por HTTP (scripts/check-http.js); deixe enabled=false para serviços sem endpoint público (a mudança de status desses continua vindo por Issue).",
+  "services": [
+    { "id": "gerador",       "name": "Gerador de Energia",                    "url": null, "enabled": false },
+    { "id": "oxigenio",      "name": "Gases Medicinais / Oxigênio",           "url": null, "enabled": false },
+    { "id": "rede",          "name": "Rede de Dados / Internet",              "url": null, "enabled": false },
+    { "id": "prontuario",    "name": "Prontuário Eletrônico (PEP)",           "url": null, "enabled": false },
+    { "id": "elevadores",    "name": "Elevadores",                           "url": null, "enabled": false },
+    { "id": "climatizacao",  "name": "Climatização — UTI e Centro Cirúrgico", "url": null, "enabled": false },
+    { "id": "agua",          "name": "Abastecimento de Água",                "url": null, "enabled": false }
+  ]
+}
