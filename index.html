@@ -122,7 +122,7 @@ function computeUptime(history){
   const known = history.filter(h => h.status === 'up' || h.status === 'down');
   if(known.length === 0) return null;
   const upCount = known.filter(h => h.status === 'up').length;
-  return { pct: (upCount / known.length * 100).toFixed(3), known: known.length };
+  return { pct: Math.round(upCount / known.length * 100), known: known.length };
 }
 
 function fmtDateTime(iso){
@@ -166,7 +166,7 @@ function cardHtml(s){
           <span class="dot ${m.cls}" style="width:8px;height:8px;margin-right:6px;vertical-align:middle;"></span>${m.label}
         </span>
       </div>
-      <div>
+      <div style="min-width:0;">
         <div class="uptime">${uptimeHtml}</div>
         ${latency}
       </div>
