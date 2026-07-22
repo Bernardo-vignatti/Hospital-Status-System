@@ -3,10 +3,11 @@
 
 const fs = require('fs');
 const path = require('path');
+const { MAX_HISTORY } = require('./lib/history');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
-const VALID_STATUS = ['ok', 'warn', 'down', 'maint'];
+const VALID_STATUS = ['up', 'down', 'unknown'];
 
 function fail(msg) {
   console.error('❌ Falha na validação: ' + msg);
@@ -59,16 +60,15 @@ data.services.forEach((s, i) => {
   if (seenIds.has(s.id)) fail(`${ctx}: "id" duplicado`);
   seenIds.add(s.id);
   if (!configIds.has(s.id)) fail(`${ctx}: "id" não existe em config/services.json`);
-  if (!VALID_STATUS.includes(s.status)) fail(`${ctx}: "status" precisa ser um de: ${VALID_STATUS.join(', ')}`);
-  if (s.lastCheckedAt && isNaN(Date.parse(s.lastCheckedAt))) fail(`${ctx}: "lastCheckedAt" inválido`);
-  if (s.lastResponseTime != null && typeof s.lastResponseTime !== 'number') {
-    fail(`${ctx}: "lastResponseTime" precisa ser número ou null`);
-  }
+
   if (!Array.isArray(s.history) || s.history.length === 0) fail(`${ctx}: "history" precisa ser uma lista não vazia`);
+  if (s.history.length > MAX_HISTORY) fail(`${ctx}: "history" tem mais de ${MAX_HISTORY} registros (${s.history.length})`);
+  if (s.status !== undefined) fail(`${ctx}: campo "status" não deve mais existir (o status atual é sempre o último item de "history")`);
+
   s.history.forEach((h, j) => {
     const hctx = `${ctx} history[${j}]`;
     if (typeof h !== 'object' || h === null) fail(`${hctx}: precisa ser um objeto {status, checkedAt, responseTime}`);
-    if (!VALID_STATUS.includes(h.status)) fail(`${hctx}: "status" inválido "${h.status}"`);
+    if (!VALID_STATUS.includes(h.status)) fail(`${hctx}: "status" inválido "${h.status}" (esperado: ${VALID_STATUS.join(', ')})`);
     if (!h.checkedAt || isNaN(Date.parse(h.checkedAt))) fail(`${hctx}: "checkedAt" ausente ou inválido`);
     if (h.responseTime != null && typeof h.responseTime !== 'number') {
       fail(`${hctx}: "responseTime" precisa ser número ou null`);
