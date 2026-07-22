@@ -5,53 +5,80 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Status dos Sistemas — Hospital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg: #F5F7F8; --panel: #FFFFFF; --ink: #10222B; --ink-soft: #4C6470;
-    --line: #DFE6E9; --teal-deep: #0A5B63;
-    --ok: #1F9D55; --ok-bg: #E7F6ED;
-    --warn: #D98A1E; --warn-bg: #FCF1DE;
+    --bg: #F3F6F7; --panel: #FFFFFF; --ink: #10222B; --ink-soft: #55707A;
+    --line: #E4EAEC; --teal-deep: #0A5B63;
+    --up: #1F9D55; --up-bg: #E7F6ED;
     --down: #D14343; --down-bg: #FBE7E7;
-    --maint: #64748B;
+    --unknown: #8996A0; --unknown-bg: #EDF0F1;
+    --shadow-sm: 0 1px 2px rgba(16,34,43,0.05);
+    --shadow-md: 0 10px 28px -16px rgba(16,34,43,0.22), 0 2px 6px -2px rgba(16,34,43,0.06);
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
   body{ background:var(--bg); color:var(--ink); font-family:'Inter', sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; }
-  .wrap{ max-width:720px; margin:0 auto; padding:0 20px 60px; }
-  header{ padding:36px 0 24px; border-bottom:1px solid var(--line); margin-bottom:28px; }
+  .wrap{ max-width:760px; margin:0 auto; padding:0 20px 72px; }
+  @media (min-width: 900px){ .wrap{ max-width:820px; padding:0 24px 88px; } }
+
+  header{ padding:40px 0 26px; border-bottom:1px solid var(--line); margin-bottom:30px; }
   .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--teal-deep); margin:0 0 10px; }
-  h1{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:28px; margin:0 0 4px; letter-spacing:-0.01em; }
-  .sub{ color:var(--ink-soft); font-size:14px; margin:0; }
-  .banner{ display:flex; align-items:center; gap:14px; padding:18px 20px; border-radius:10px; margin-bottom:28px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; border:1px solid transparent; transition:background-color .3s ease, color .3s ease, border-color .3s ease; }
-  .banner.ok{ background:var(--ok-bg); color:#146538; border-color:#BEE6CC; }
-  .banner.warn{ background:var(--warn-bg); color:#8A5A0F; border-color:#F0D9AC; }
+  h1{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
+  .sub{ color:var(--ink-soft); font-size:14.5px; margin:0; }
+
+  .banner{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-radius:12px; margin-bottom:30px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; border:1px solid transparent; box-shadow:var(--shadow-sm); transition:background-color .3s ease, color .3s ease, border-color .3s ease; }
+  .banner.up{ background:var(--up-bg); color:#146538; border-color:#BEE6CC; }
   .banner.down{ background:var(--down-bg); color:#8F2A2A; border-color:#F1BFBF; }
+  .banner.unknown{ background:var(--unknown-bg); color:#4B5B63; border-color:#D7DEE1; }
+
   .dot{ width:11px; height:11px; border-radius:50%; display:inline-block; position:relative; flex-shrink:0; }
   .dot::after{ content:''; position:absolute; inset:-5px; border-radius:50%; opacity:0.35; }
-  .dot.ok{ background:var(--ok); } .dot.ok::after{ background:var(--ok); animation:pulse 2.2s ease-out infinite; }
-  .dot.warn{ background:var(--warn); } .dot.warn::after{ background:var(--warn); animation:pulse 1.4s ease-out infinite; }
+  .dot.up{ background:var(--up); } .dot.up::after{ background:var(--up); animation:pulse 2.2s ease-out infinite; }
   .dot.down{ background:var(--down); }
-  .dot.maint{ background:var(--maint); }
+  .dot.unknown{ background:var(--unknown); }
   @keyframes pulse{ 0%{ transform:scale(0.6); opacity:0.5; } 100%{ transform:scale(1.8); opacity:0; } }
-  @media (prefers-reduced-motion: reduce){ .dot::after{ animation:none; display:none; } }
-  .card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:20px; margin-bottom:14px; transition:box-shadow .4s ease, border-color .4s ease; }
-  .card.flash{ border-color:var(--teal-deep); box-shadow:0 0 0 3px rgba(10,91,99,0.12); }
-  .card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-  .name{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; margin:0 0 6px; }
-  .status-label{ font-family:'IBM Plex Mono', monospace; font-size:12px; }
-  .status-label.ok{ color:var(--ok); } .status-label.warn{ color:var(--warn); } .status-label.down{ color:var(--down); } .status-label.maint{ color:var(--maint); }
-  .uptime{ font-family:'IBM Plex Mono', monospace; font-size:20px; font-weight:500; text-align:right; white-space:nowrap; }
-  .uptime span{ font-size:12px; color:var(--ink-soft); display:block; margin-top:2px; }
-  .latency{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9AAAB1; text-align:right; margin-top:4px; }
-  .history{ display:flex; gap:2.5px; margin-top:16px; height:34px; }
-  .bar{ flex:1; border-radius:2px; min-width:3px; transition:background-color .3s ease; }
-  .bar.ok{ background:var(--ok); } .bar.warn{ background:var(--warn); } .bar.down{ background:var(--down); } .bar.maint{ background:var(--maint); opacity:0.5; }
-  .history-labels{ display:flex; justify-content:space-between; font-family:'IBM Plex Mono', monospace; font-size:10px; color:#9AAAB1; margin-top:6px; }
-  .updated-at{ text-align:center; color:#9AAAB1; font-family:'IBM Plex Mono', monospace; font-size:11px; margin-top:24px; }
+  @media (prefers-reduced-motion: reduce){ .dot::after{ animation:none; display:none; } .card{ animation:none !important; } }
+
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:22px 22px 20px; margin-bottom:16px; box-shadow:var(--shadow-sm);
+    transition:box-shadow .35s ease, border-color .35s ease, transform .35s ease;
+  }
+  .card.flash{ border-color:var(--teal-deep); box-shadow:0 0 0 3px rgba(10,91,99,0.12), var(--shadow-md); }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(5px); } to{ opacity:1; transform:translateY(0); } }
+  .card{ animation:fadeIn .4s ease both; }
+
+  .card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+  .name{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16.5px; margin:0 0 7px; letter-spacing:-0.005em; }
+  .status-label{ font-family:'IBM Plex Mono', monospace; font-size:12px; display:inline-flex; align-items:center; }
+  .status-label.up{ color:var(--up); } .status-label.down{ color:var(--down); } .status-label.unknown{ color:var(--unknown); }
+
+  .uptime{ font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:600; text-align:right; white-space:nowrap; }
+  .uptime span{ font-size:11.5px; font-weight:400; color:var(--ink-soft); display:block; margin-top:3px; }
+  .latency{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9AAAB1; text-align:right; margin-top:5px; }
+
+  .history-wrap{ margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+  .history{ display:flex; gap:2.5px; height:30px; }
+  .bar{
+    flex:1; border-radius:3px; min-width:3px; cursor:pointer;
+    transition:background-color .3s ease, transform .15s ease;
+  }
+  .bar.up{ background:var(--up); } .bar.down{ background:var(--down); } .bar.unknown{ background:var(--unknown); opacity:0.55; }
+  .bar:hover, .bar.tapped{ transform:scaleY(1.12); }
+  .history-caption{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#9AAAB1; margin-top:8px; }
+
+  #tooltip{
+    position:fixed; z-index:50; pointer-events:none; background:#10222B; color:#fff;
+    border-radius:8px; padding:9px 12px; font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    line-height:1.5; box-shadow:0 8px 24px rgba(0,0,0,0.25); opacity:0; transform:translate(-50%,-8px);
+    transition:opacity .12s ease, transform .12s ease; max-width:220px; white-space:nowrap;
+  }
+  #tooltip.visible{ opacity:1; transform:translate(-50%,-14px); }
+  #tooltip b{ font-family:'Inter', sans-serif; font-weight:600; }
+
+  .updated-at{ text-align:center; color:#9AAAB1; font-family:'IBM Plex Mono', monospace; font-size:11px; margin-top:26px; }
   .loading, .error{ text-align:center; padding:60px 0; color:var(--ink-soft); font-family:'IBM Plex Mono', monospace; font-size:13px; }
-  @keyframes fadeIn{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:translateY(0); } }
-  .card{ animation:fadeIn .35s ease both; }
 </style>
 </head>
 <body>
@@ -61,7 +88,7 @@
     <h1>Sistemas do Hospital</h1>
     <p class="sub">Acompanhamento em tempo real da infraestrutura crítica.</p>
   </header>
-  <div id="banner" class="banner ok" style="display:none;">
+  <div id="banner" class="banner up" style="display:none;">
     <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
       <path d="M0 10 H6 L9 2 L13 18 L16 10 H28" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
@@ -70,80 +97,98 @@
   <div id="list"><div class="loading">Carregando status dos sistemas…</div></div>
   <p class="updated-at" id="updated-at"></p>
 </div>
+<div id="tooltip"></div>
 <script>
 const STATUS_META = {
-  ok:    { label: 'Operacional',   cls: 'ok' },
-  warn:  { label: 'Degradado',     cls: 'warn' },
-  down:  { label: 'Indisponível',  cls: 'down' },
-  maint: { label: 'Em manutenção', cls: 'maint' },
+  up:      { label: 'Operante',    cls: 'up' },
+  down:    { label: 'Inoperante',  cls: 'down' },
+  unknown: { label: 'Desconhecido', cls: 'unknown' },
 };
 
-const POLL_INTERVAL_MS = 30000; // ~30s, conforme pedido
-const CLOCK_INTERVAL_MS = 1000; // atualiza "há X segundos" a cada 1s, sem rede
+const POLL_INTERVAL_MS = 30000; // ~30s
+const CLOCK_INTERVAL_MS = 1000; // "atualizado há Xs", sem rede
 
-let serviceNames = {};        // id -> name (vem de config/services.json, carregado 1x)
-let lastUpdatedAt = null;      // updatedAt do último status.json aplicado
-let lastServiceJson = {};      // id -> JSON.stringify(service) do último render, p/ diff
-let lastUpdatedAtDate = null;  // Date do último updatedAt, para o relógio "há Xs"
+let serviceNames = {};        // id -> name (config/services.json, carregado 1x)
+let lastUpdatedAt = null;
+let lastServiceJson = {};     // id -> JSON.stringify(service), p/ atualização parcial
+let lastUpdatedAtDate = null;
 
+function meta(status){ return STATUS_META[status] || STATUS_META.unknown; }
+
+// Disponibilidade calculada só sobre os segmentos com resultado conhecido
+// (up/down). "Desconhecido" não conta como operante nem entra no
+// denominador — não é uma medição, é ausência de dado.
 function computeUptime(history){
-  const weight = { ok: 1, warn: 0.5, down: 0, maint: 1 };
-  const total = history.reduce((sum, h) => sum + (weight[h.status] ?? 1), 0);
-  return (total / history.length * 100).toFixed(3);
+  const known = history.filter(h => h.status === 'up' || h.status === 'down');
+  if(known.length === 0) return null;
+  const upCount = known.filter(h => h.status === 'up').length;
+  return { pct: (upCount / known.length * 100).toFixed(3), known: known.length };
 }
 
-function renderBanner(services){
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function renderBanner(current){
   const banner = document.getElementById('banner');
   const text = document.getElementById('banner-text');
-  const hasDown = services.some(s => s.status === 'down');
-  const hasWarn = services.some(s => s.status === 'warn');
-  banner.classList.remove('ok','warn','down');
+  const hasDown = current.some(s => s === 'down');
+  const hasUnknown = current.some(s => s === 'unknown');
+  banner.classList.remove('up','down','unknown');
   banner.style.display = 'flex';
   if(hasDown){ banner.classList.add('down'); text.textContent = 'Um ou mais sistemas estão indisponíveis'; }
-  else if(hasWarn){ banner.classList.add('warn'); text.textContent = 'Desempenho degradado em parte dos sistemas'; }
-  else { banner.classList.add('ok'); text.textContent = 'Todos os sistemas operacionais'; }
+  else if(hasUnknown){ banner.classList.add('unknown'); text.textContent = 'Status de um ou mais sistemas está desconhecido'; }
+  else { banner.classList.add('up'); text.textContent = 'Todos os sistemas operantes'; }
 }
 
 function cardHtml(s){
-  const meta = STATUS_META[s.status] || STATUS_META.ok;
+  const last = s.history[s.history.length - 1];
+  const m = meta(last.status);
   const uptime = computeUptime(s.history);
-  const bars = s.history.map(h => `<div class="bar ${(STATUS_META[h.status]||STATUS_META.ok).cls}"></div>`).join('');
   const name = serviceNames[s.id] || s.id;
-  const latency = typeof s.lastResponseTime === 'number'
-    ? `<div class="latency">Latência: ${s.lastResponseTime} ms</div>`
+  const latency = typeof last.responseTime === 'number'
+    ? `<div class="latency">Latência: ${last.responseTime} ms</div>`
     : '';
+  const bars = s.history.map((h, i) => {
+    const hm = meta(h.status);
+    return `<div class="bar ${hm.cls}" data-status="${h.status}" data-checked="${h.checkedAt}" data-rt="${h.responseTime ?? ''}"></div>`;
+  }).join('');
+  const uptimeHtml = uptime
+    ? `${uptime.pct}%<span>disponibilidade (${uptime.known} verificações)</span>`
+    : `—<span>sem dados suficientes</span>`;
+
   return `
     <div class="card-top">
       <div>
         <p class="name">${name}</p>
-        <span class="status-label ${meta.cls}">
-          <span class="dot ${meta.cls}" style="width:8px;height:8px;margin-right:6px;vertical-align:middle;"></span>${meta.label}
+        <span class="status-label ${m.cls}">
+          <span class="dot ${m.cls}" style="width:8px;height:8px;margin-right:6px;vertical-align:middle;"></span>${m.label}
         </span>
       </div>
       <div>
-        <div class="uptime">${uptime}%<span>disponibilidade (${s.history.length} dias)</span></div>
+        <div class="uptime">${uptimeHtml}</div>
         ${latency}
       </div>
     </div>
-    <div class="history">${bars}</div>
-    <div class="history-labels"><span>${s.history.length} dias atrás</span><span>hoje</span></div>
+    <div class="history-wrap">
+      <div class="history">${bars}</div>
+      <div class="history-caption">Últimas ${s.history.length} verificações</div>
+    </div>
   `;
 }
 
-// Renderiza a lista inteira (só usado na primeira carga).
 function renderListFull(services){
   const list = document.getElementById('list');
   list.innerHTML = services.map(s => `<div class="card" data-id="${s.id}">${cardHtml(s)}</div>`).join('');
   services.forEach(s => { lastServiceJson[s.id] = JSON.stringify(s); });
 }
 
-// Atualiza apenas os cards cujo conteúdo realmente mudou, evitando
-// reconstruir a interface inteira a cada polling.
 function renderListDiff(services){
   const list = document.getElementById('list');
   services.forEach(s => {
     const serialized = JSON.stringify(s);
-    if(lastServiceJson[s.id] === serialized) return; // nada mudou neste serviço
+    if(lastServiceJson[s.id] === serialized) return;
 
     let card = list.querySelector(`.card[data-id="${s.id}"]`);
     if(!card){
@@ -159,6 +204,41 @@ function renderListDiff(services){
     lastServiceJson[s.id] = serialized;
   });
 }
+
+// --- Tooltip do histórico (funciona com mouse e com toque) ---
+const tooltipEl = document.getElementById('tooltip');
+let tappedBar = null;
+
+function showTooltip(bar, x, y){
+  const m = meta(bar.dataset.status);
+  const rt = bar.dataset.rt;
+  tooltipEl.innerHTML = `<b>${m.label}</b><br>${fmtDateTime(bar.dataset.checked)}` +
+    (rt ? `<br>Tempo de resposta: ${rt} ms` : '');
+  tooltipEl.style.left = x + 'px';
+  tooltipEl.style.top = y + 'px';
+  tooltipEl.classList.add('visible');
+}
+function hideTooltip(){ tooltipEl.classList.remove('visible'); }
+
+document.getElementById('list').addEventListener('mouseover', (e) => {
+  const bar = e.target.closest('.bar');
+  if(!bar) return;
+  const rect = bar.getBoundingClientRect();
+  showTooltip(bar, rect.left + rect.width / 2, rect.top);
+});
+document.getElementById('list').addEventListener('mouseout', (e) => {
+  if(e.target.closest('.bar')) hideTooltip();
+});
+document.getElementById('list').addEventListener('click', (e) => {
+  const bar = e.target.closest('.bar');
+  if(!bar){ tappedBar?.classList.remove('tapped'); tappedBar = null; hideTooltip(); return; }
+  if(tappedBar === bar){ bar.classList.remove('tapped'); tappedBar = null; hideTooltip(); return; }
+  tappedBar?.classList.remove('tapped');
+  bar.classList.add('tapped');
+  tappedBar = bar;
+  const rect = bar.getBoundingClientRect();
+  showTooltip(bar, rect.left + rect.width / 2, rect.top);
+});
 
 function updateClock(){
   const el = document.getElementById('updated-at');
@@ -185,16 +265,11 @@ async function pollStatus(isFirstLoad){
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
 
-    if(!isFirstLoad && data.updatedAt === lastUpdatedAt){
-      return; // nada mudou desde a última checagem, evita re-render inútil
-    }
+    if(!isFirstLoad && data.updatedAt === lastUpdatedAt) return;
 
-    renderBanner(data.services);
-    if(isFirstLoad){
-      renderListFull(data.services);
-    } else {
-      renderListDiff(data.services);
-    }
+    renderBanner(data.services.map(s => s.history[s.history.length - 1].status));
+    if(isFirstLoad) renderListFull(data.services);
+    else renderListDiff(data.services);
 
     lastUpdatedAt = data.updatedAt;
     lastUpdatedAtDate = new Date(data.updatedAt);
@@ -209,11 +284,8 @@ async function pollStatus(isFirstLoad){
 }
 
 async function init(){
-  try{
-    await loadServiceNames();
-  }catch(e){
-    console.error('Falha ao carregar config/services.json', e);
-  }
+  try{ await loadServiceNames(); }
+  catch(e){ console.error('Falha ao carregar config/services.json', e); }
   await pollStatus(true);
   setInterval(() => pollStatus(false), POLL_INTERVAL_MS);
   setInterval(updateClock, CLOCK_INTERVAL_MS);
