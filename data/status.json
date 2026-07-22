@@ -1,14 +1,9 @@
 {
-  "updatedAt": "2026-07-22T22:50:59.227Z",
+  "updatedAt": "2026-07-22T22:55:59.300Z",
   "services": [
     {
       "id": "gerador",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-11T13:48:12.462Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-12T13:48:12.462Z",
@@ -153,17 +148,17 @@
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
           "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
+          "responseTime": null
         }
       ]
     },
     {
       "id": "oxigenio",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
@@ -308,17 +303,17 @@
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
           "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
+          "responseTime": null
         }
       ]
     },
     {
       "id": "site",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
@@ -463,17 +458,17 @@
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
           "responseTime": 85
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
+          "responseTime": 37
         }
       ]
     },
     {
       "id": "prontuario",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
@@ -617,6 +612,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
           "responseTime": null
         }
       ]
@@ -626,11 +626,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
           "responseTime": null
         },
@@ -772,6 +767,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
           "responseTime": null
         }
       ]
@@ -781,11 +781,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
           "responseTime": null
         },
@@ -927,6 +922,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
           "responseTime": null
         }
       ]
@@ -936,11 +936,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-09T13:48:12.462Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-10T13:48:12.462Z",
           "responseTime": null
         },
@@ -1082,6 +1077,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-22T22:50:59.227Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-22T22:55:59.300Z",
           "responseTime": null
         }
       ]
