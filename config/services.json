@@ -3,7 +3,7 @@
   "services": [
     { "id": "gerador",       "name": "Gerador de Energia",                    "url": null, "enabled": false },
     { "id": "oxigenio",      "name": "Gases Medicinais / Oxigênio",           "url": null, "enabled": false },
-    { "id": "site",          "name": "Site hfatima.com.br",                   "url": www.hfatima.com.br, "enabled": true },
+    { "id": "Site hfatima.com.br",          "name": "Site",                   "url": "https://www.hfatima.com.br, "enabled": true },
     { "id": "prontuario",    "name": "Prontuário Eletrônico (PEP)",           "url": null, "enabled": false },
     { "id": "elevadores",    "name": "Elevadores",                           "url": null, "enabled": false },
     { "id": "climatizacao",  "name": "Climatização", "url": null, "enabled": false },
