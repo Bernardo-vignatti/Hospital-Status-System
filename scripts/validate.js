@@ -7,7 +7,7 @@ const { MAX_HISTORY } = require('./lib/history');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
-const VALID_STATUS = ['up', 'down', 'unknown'];
+const VALID_STATUS = ['up', 'down', 'maint', 'unknown'];
 
 function fail(msg) {
   console.error('❌ Falha na validação: ' + msg);
