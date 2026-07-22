@@ -118,9 +118,12 @@ do seu `history`:
 | Manutenção | `maint` | 🟡 amarelo | Só via Issue — sinaliza indisponibilidade planejada |
 | Desconhecido | `unknown` | ⚪ cinza | Só via Issue — ausência de dado confiável |
 
-`maint` e `unknown` **não entram no cálculo de disponibilidade** (ver
-abaixo) — só são atribuídos manualmente, nunca por `check-http.js` (uma
-checagem HTTP real só pode resultar em `up` ou `down`).
+`maint` e `unknown` só são atribuídos manualmente, nunca por
+`check-http.js` (uma checagem HTTP real só pode resultar em `up` ou
+`down`). No **cálculo de disponibilidade** (ver abaixo), `maint` conta
+como indisponibilidade (o serviço está de fato fora do ar nesse
+período); só `unknown` fica de fora da conta, por ser ausência de dado
+confiável em vez de uma medição.
 
 ## Timeline sincronizada (histórico)
 
@@ -149,12 +152,14 @@ mudanças manuais via Issue, fica `null`.
 
 ### Disponibilidade (%)
 
-Calculada só sobre os registros com resultado **medido** (`up`/`down`)
-dentre os 30; `unknown` e `maint` não contam como sucesso nem entram no
-denominador — são ausência de medição, não uma falha. Se não houver
-nenhum registro medido, o site mostra "sem dados suficientes" em vez de
-0%. O valor exibido é arredondado para um número inteiro (sem casas
-decimais) e colorido conforme o estado atual do serviço.
+Calculada sobre os registros `up`/`down`/`maint` dentre os 30 — `maint`
+entra no denominador e conta como indisponibilidade (não como sucesso),
+já que o serviço está de fato fora do ar nesse período. Só `unknown`
+fica fora da conta, por ser ausência de medição confiável, não uma
+falha. Se não houver nenhum registro `up`/`down`/`maint`, o site mostra
+"sem dados suficientes" em vez de 0%. O valor exibido é arredondado
+para um número inteiro (sem casas decimais) e colorido conforme o
+estado atual do serviço.
 
 ## Como publicar (GitHub Pages)
 
