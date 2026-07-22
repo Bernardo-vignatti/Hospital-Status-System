@@ -1,21 +1,24 @@
-// Lê o corpo de uma Issue criada a partir do formulário "status-update.yml",
-// interpreta qual sistema e status foram escolhidos, e aplica a mudança em
-// data/status.json.
+// Lê o corpo de uma Issue criada a partir do formulário "status-update.yml"
+// e interpreta qual sistema e status foram escolhidos.
 //
-// Toda atualização (manual ou automática) avança a timeline de TODOS os
-// serviços simultaneamente: o serviço reportado ganha o novo status, e
-// todos os demais ganham um novo segmento repetindo o status em que já
-// estavam — assim a barra de histórico de todos os cards fica sempre
-// sincronizada no mesmo número de posições.
+// IMPORTANTE (arquitetura de relógio único): este script NUNCA escreve em
+// data/status.json e NUNCA avança a timeline. Ele só registra a mudança
+// desejada em data/pending-changes.json (fila de mudanças pendentes). A
+// timeline só avança dentro do ciclo de ~5 min do auto-check.yml, que é
+// quem de fato lê essa fila, aplica a mudança e faz o serviço avançar
+// junto com todos os outros no mesmo tick — assim uma Issue, que pode
+// chegar a qualquer momento e sofrer o atraso natural da API/eventos do
+// GitHub, nunca reinicia, adianta ou atrasa o ciclo global.
 //
 // O workflow que chama este script (update-status.yml) faz commit e push
-// diretos assim que a Issue é criada, sem necessidade de Pull Request: a
+// diretos da fila assim que a Issue é criada (sem Pull Request: a
 // aprovação já aconteceu no momento em que alguém com acesso ao
-// repositório preencheu e enviou o formulário da Issue.
+// repositório preencheu e enviou o formulário).
 
 const fs = require('fs');
 const path = require('path');
-const { pushHistoryEntry, currentStatus } = require('./lib/history');
+const { currentStatus } = require('./lib/history');
+const { readPending, writePending, queueChange, effectiveStatus } = require('./lib/pending');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
@@ -49,6 +52,7 @@ function setOutput(name, value) {
 
 function main() {
   const body = process.env.ISSUE_BODY || '';
+  const issueNumber = process.env.ISSUE_NUMBER || null;
 
   const sistemaLabel = extractField(body, 'Sistema');
   const statusLabel = extractField(body, 'Novo status');
@@ -76,24 +80,23 @@ function main() {
     return;
   }
 
-  if (currentStatus(service) === statusCode) {
-    console.log(`"${serviceConfig.name}" já estava como "${statusCode}". Nada a fazer.`);
+  const pending = readPending();
+  const current = effectiveStatus(pending, service.id, currentStatus(service));
+
+  if (current === statusCode) {
+    console.log(`"${serviceConfig.name}" já está (ou já vai ficar, por mudança pendente) como "${statusCode}". Nada a fazer.`);
     setOutput('changed', 'false');
     return;
   }
 
-  const now = new Date().toISOString();
-  data.services.forEach((s) => {
-    if (s.id === service.id) {
-      pushHistoryEntry(s, { status: statusCode, checkedAt: now, responseTime: null });
-    } else {
-      pushHistoryEntry(s, { status: currentStatus(s), checkedAt: now, responseTime: null });
-    }
+  queueChange(pending, service.id, {
+    status: statusCode,
+    requestedAt: new Date().toISOString(),
+    issueNumber: issueNumber ? Number(issueNumber) : null,
   });
-  data.updatedAt = now;
-  fs.writeFileSync(STATUS_FILE, JSON.stringify(data, null, 2) + '\n');
+  writePending(pending);
 
-  console.log(`✅ "${serviceConfig.name}" atualizado para "${statusCode}".`);
+  console.log(`📝 "${serviceConfig.name}" → "${statusCode}" registrado na fila. Será aplicado no próximo ciclo de atualização.`);
   setOutput('changed', 'true');
   setOutput('service_name', serviceConfig.name);
   setOutput('status_label', statusLabel);
