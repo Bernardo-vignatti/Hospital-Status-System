@@ -120,11 +120,13 @@ let lastUpdatedAtDate = null;
 
 function meta(status){ return STATUS_META[status] || STATUS_META.unknown; }
 
-// Disponibilidade calculada só sobre os segmentos com resultado conhecido
-// (up/down). "Desconhecido" não conta como operante nem entra no
-// denominador — não é uma medição, é ausência de dado.
+// Disponibilidade calculada sobre os segmentos com resultado conhecido
+// (up/down/maint). "Manutenção" conta como indisponível (down) para fins
+// de %, pois o serviço está de fato fora do ar para o usuário nesse
+// período. "Desconhecido" continua fora da conta — não é uma medição,
+// é ausência de dado.
 function computeUptime(history){
-  const known = history.filter(h => h.status === 'up' || h.status === 'down');
+  const known = history.filter(h => h.status === 'up' || h.status === 'down' || h.status === 'maint');
   if(known.length === 0) return null;
   const upCount = known.filter(h => h.status === 'up').length;
   return { pct: Math.round(upCount / known.length * 100), known: known.length };
