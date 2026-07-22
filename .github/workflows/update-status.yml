@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   update-status:
-    if: github.event.issue.state == 'open' && contains(github.event.issue.labels.*.name, 'status-update')
+    if: github.event.issue.state == 'open'
     runs-on: ubuntu-latest
 
     steps:
