@@ -1,5 +1,13 @@
 # Status dos Sistemas — Hospital
 
+> ⚠️ **README provisório.** Atualizado a partir do estado atual do código
+> (workflows, scripts e Cloudflare Worker) em 22/07/2026, principalmente
+> para corrigir a descrição do fluxo de Issue: hoje ele passa por uma
+> **fila de mudanças pendentes** (`data/pending-changes.json`), e não
+> mais por aplicação/commit direto em `data/status.json`. Revise antes
+> de considerar definitivo — em especial contatos/CODEOWNERS e o link do
+> site publicado, que não é possível confirmar só a partir do código.
+
 Painel público e estático de status da infraestrutura crítica do hospital
 (gerador, oxigênio, rede, prontuário eletrônico, elevadores, climatização,
 água). Sem login ou senha no navegador de propósito — qualquer pessoa pode
@@ -13,42 +21,58 @@ a cada ~30 segundos e atualiza a interface sozinho, sem precisar de F5.
 ## Estrutura
 
 ```
-index.html                              → o site (lê config/services.json e data/status.json)
+index.html                              → o site (lê config/services.json e data/status.json, faz polling a cada ~30s)
 config/services.json                    → fonte única: id, nome, url e enabled de cada serviço
-data/status.json                        → updatedAt + histórico (30 registros) de cada serviço
-scripts/check-http.js                   → roda a cada 5 min: checagem HTTP real ou heartbeat, para TODOS os serviços
-scripts/apply-status-change.js          → aplica a mudança de status vinda de uma Issue
-scripts/validate.js                     → valida o schema de status.json e sua consistência com services.json
-scripts/lib/history.js                  → utilitário compartilhado (adicionar registro + cortar em 30)
+data/status.json                        → updatedAt + histórico (até 30 registros) de cada serviço (fonte da verdade do status atual)
+data/pending-changes.json               → fila de mudanças pendentes vindas de Issue, ainda não aplicadas ao ciclo
+scripts/check-http.js                   → ciclo local (~5 min, fallback manual): checagem HTTP, heartbeat ou aplica fila, para TODOS os serviços
+scripts/apply-status-change.js          → lê uma Issue e ENFILEIRA a mudança em data/pending-changes.json (não escreve status.json)
+scripts/validate.js                     → valida o schema de status.json/pending-changes.json e a consistência com services.json
+scripts/lib/history.js                  → utilitário compartilhado (adicionar registro ao histórico + cortar em 30)
+scripts/lib/pending.js                  → utilitário compartilhado para ler/gravar/consumir a fila de mudanças pendentes
+cloudflare-worker/                      → Worker com Cron Trigger (~5 min) que roda o ciclo de verdade, via GitHub Contents API
+cloudflare-worker/src/index.js          → mesma lógica de check-http.js, lendo/gravando status.json e pending-changes.json remotamente
+cloudflare-worker/wrangler.toml         → config do Worker (cron, owner/repo/branch do GitHub)
 .github/ISSUE_TEMPLATE/status-update.yml→ formulário usado para reportar mudanças de status
-.github/workflows/auto-check.yml        → cron a cada 5 min → check-http.js → commit direto
-.github/workflows/update-status.yml     → dispara ao abrir Issue → apply-status-change.js → commit + fecha a Issue
+.github/workflows/auto-check.yml        → hoje só com gatilho manual (workflow_dispatch) — fallback caso o Worker fique indisponível
+.github/workflows/update-status.yml     → dispara ao abrir Issue → apply-status-change.js → registra na fila + fecha a Issue
 .github/workflows/validate-status.yml   → valida status.json/services.json em PR e push
-CODEOWNERS, LICENSE                     → metadados do repositório
+assets/                                 → imagens usadas pelo site (ex.: logo do hospital)
+CODEOWNERS                              → vestigial (ver "Configuração pendente"), LICENSE → licença do repositório
 ```
 
 ## Fluxo completo
 
 Existem **duas formas** de um status mudar, e em **nenhuma delas há Pull
-Request** — a mudança vai direto para o `main` assim que a automação a
-valida. As duas convergem no mesmo arquivo (`data/status.json`) e sempre
-avançam a timeline de **todos** os serviços ao mesmo tempo (ver
-["Timeline sincronizada"](#timeline-sincronizada-histórico)).
+Request** — tudo vai direto para o `main` assim que a automação valida.
+As duas convergem no mesmo ciclo de ~5 minutos, que é o único momento em
+que `data/status.json` é escrito e a timeline de **todos** os serviços
+avança junto (ver ["Timeline sincronizada"](#timeline-sincronizada-histórico)):
+
+- a **checagem automática** (Cloudflare Worker) roda esse ciclo a cada
+  tick, verificando serviços com URL pública;
+- uma **Issue** não escreve `status.json` diretamente — ela só registra a
+  intenção de mudança em `data/pending-changes.json` (fila), que o
+  próximo tick do ciclo lê e consome. Isso existe para que o sistema
+  tenha um único "relógio": uma Issue pode chegar a qualquer momento,
+  mas nunca reinicia, adianta ou atrasa o cronograma de 5 minutos.
 
 ```mermaid
 flowchart TD
-    A["⏱️ Cron a cada 5 min<br/>(auto-check.yml)"] --> B["check-http.js"]
-    B -->|"enabled:true + url"| C["Checagem HTTP real<br/>(up/down + latência)"]
-    B -->|"enabled:false"| D["Heartbeat<br/>(repete o status atual)"]
-    C --> E["data/status.json<br/>+1 registro em TODOS os serviços"]
-    D --> E
-
     F["🧑 Issue aberta<br/>(status-update.yml)"] --> G["update-status.yml"]
     G --> H["apply-status-change.js"]
-    H --> I["Serviço relatado: novo status<br/>Demais serviços: repetem status atual"]
-    I --> E
+    H --> P["data/pending-changes.json<br/>(fila — commit direto, sem PR)"]
 
-    E --> J["git commit + push direto<br/>(sem Pull Request)"]
+    A["⏱️ Cron a cada 5 min<br/>(Cloudflare Worker)"] --> B["mesma lógica de check-http.js"]
+    P -.->|"lida no próximo tick"| B
+    B -->|"há mudança pendente"| Q["Consome a fila:<br/>aplica o status enfileirado"]
+    B -->|"sem pendência,<br/>enabled:true + url"| C["Checagem HTTP real<br/>(up/down + latência)"]
+    B -->|"sem pendência,<br/>enabled:false"| D["Heartbeat<br/>(repete o status atual)"]
+    Q --> E["data/status.json<br/>+1 registro em TODOS os serviços"]
+    C --> E
+    D --> E
+
+    E --> J["commit + push direto via<br/>GitHub Contents API (sem PR)"]
     J --> K["GitHub Pages"]
     K --> L["index.html faz polling<br/>a cada ~30s e atualiza a UI"]
 ```
@@ -114,21 +138,32 @@ aba *Actions* → `auto-check.yml` → *Run workflow*. Serve de rede de
 segurança se o Worker ficar indisponível (token expirado, conta
 suspensa, etc.).
 
-### 2. Manual — via Issue
+### 2. Manual — via Issue (fila de pendências)
 
 Sistemas físicos (gerador, oxigênio, elevadores, climatização, água) não
 têm sensor/API pública para o GitHub consultar, então a mudança de status
 continua vindo de uma pessoa — só que por formulário, não por edição
-direta do JSON:
+direta do JSON, e não é aplicada instantaneamente:
 
 1. Abra uma **Issue** usando o template **"🔧 Atualizar status de um
    sistema"** (aba *Issues* → *New issue*).
 2. Escolha o sistema e o novo status (**Operante**, **Inoperante**,
    **Manutenção** ou **Desconhecido**).
-3. O workflow `update-status.yml` lê a Issue, aplica a mudança via
-   `apply-status-change.js` e faz **commit e push diretos** — o site já
-   reflete a mudança em segundos.
-4. A Issue é comentada e fechada automaticamente confirmando o resultado.
+3. O workflow `update-status.yml` lê a Issue e chama
+   `apply-status-change.js`, que **não escreve em `data/status.json`** —
+   ele só registra a mudança em `data/pending-changes.json` (a fila) e
+   faz **commit e push diretos** dessa fila (sem Pull Request).
+4. A Issue é comentada (avisando que a mudança entrou na fila e será
+   aplicada no próximo ciclo, em até ~5 min) e fechada automaticamente.
+5. No **próximo tick** do ciclo automático (seção 1), o Worker lê a fila,
+   aplica o status enfileirado a esse serviço — e só então o site
+   reflete a mudança, junto com o avanço da timeline de todos os demais
+   serviços.
+
+Esse desenho existe para manter um **relógio único**: como uma Issue pode
+ser aberta a qualquer momento, ela nunca escreve diretamente na timeline
+nem a faz avançar fora de hora — ela só entra na fila, e quem avança a
+timeline é sempre o ciclo de ~5 min.
 
 A segurança vem de quem pode abrir uma Issue no repositório (colaboradores
 autorizados); o formulário elimina erro de digitação/formatação no JSON.
