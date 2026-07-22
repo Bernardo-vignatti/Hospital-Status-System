@@ -1,21 +1,28 @@
-// Atualização automática de status a cada 5 minutos, para TODOS os serviços.
+// Ciclo único de atualização (~5 min, via auto-check.yml). Este é o ÚNICO
+// script que escreve data/status.json — ou seja, o único que avança a
+// timeline. Para cada serviço, na ordem de prioridade abaixo:
 //
-// Lê config/services.json. Para cada serviço:
-//   - "enabled": true e "url" preenchida  -> a URL é válida para checagem
-//     automática: faz uma requisição HTTP real, mede a latência (ms) e
-//     classifica em "up" (resposta ok) ou "down" (erro/timeout).
-//   - "enabled": false (ou sem "url")     -> a URL não é usada (ou não
-//     existe); o serviço permanece em modo manual (só muda de status via
-//     Issue), mas AINDA ASSIM ganha um novo registro a cada execução,
-//     repetindo o último status conhecido (heartbeat) — assim a barra de
-//     histórico do site nunca fica "parada no tempo".
+//   1. Mudança manual pendente (data/pending-changes.json, gravada por
+//      apply-status-change.js quando uma Issue é processada) -> aplica
+//      esse status e CONSOME a entrada da fila. Uma mudança manual vence
+//      mesmo para serviços com checagem HTTP automática habilitada,
+//      porque "maint"/"unknown" só existem via Issue (nunca resultam de
+//      uma checagem HTTP real).
+//   2. "enabled": true e "url" preenchida -> checagem HTTP real: mede a
+//      latência (ms) e classifica em "up" (resposta ok) ou "down"
+//      (erro/timeout).
+//   3. Caso contrário -> heartbeat: repete o último status conhecido,
+//      sem checagem HTTP, mantendo o serviço em modo manual.
 //
-// Cada execução adiciona UM novo segmento ao histórico de CADA serviço
-// (checagem real ou heartbeat), mantendo só os 30 mais recentes.
+// Cada execução adiciona UM novo segmento ao histórico de CADA serviço,
+// todos com o mesmo "checkedAt" — a fila é sempre esvaziada ao final,
+// então uma Issue processada entre dois ciclos nunca cria um segmento
+// "extra" fora de cadência: ela só é refletida no próximo tick regular.
 
 const fs = require('fs');
 const path = require('path');
 const { pushHistoryEntry, currentStatus } = require('./lib/history');
+const { readPending, writePending } = require('./lib/pending');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
@@ -40,6 +47,7 @@ async function checkOne(url) {
 async function main() {
   const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
   const data = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'));
+  const pending = readPending();
 
   const now = new Date().toISOString();
 
@@ -51,8 +59,15 @@ async function main() {
     }
 
     const before = currentStatus(service);
+    const queued = pending.changes[cfg.id];
 
-    if (cfg.enabled && cfg.url) {
+    if (queued) {
+      pushHistoryEntry(service, { status: queued.status, checkedAt: now, responseTime: null });
+      console.log(
+        `${cfg.name}: mudança manual aplicada (${before} → ${queued.status}, via Issue #${queued.issueNumber ?? '?'})`
+      );
+      delete pending.changes[cfg.id];
+    } else if (cfg.enabled && cfg.url) {
       const { status, responseTime } = await checkOne(cfg.url);
       pushHistoryEntry(service, { status, checkedAt: now, responseTime });
       console.log(
@@ -68,7 +83,8 @@ async function main() {
 
   data.updatedAt = now;
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data, null, 2) + '\n');
-  console.log('✅ status.json atualizado.');
+  writePending(pending);
+  console.log('✅ status.json atualizado e fila de mudanças pendentes processada.');
 }
 
 main();
