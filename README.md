@@ -53,39 +53,66 @@ flowchart TD
     K --> L["index.html faz polling<br/>a cada ~30s e atualiza a UI"]
 ```
 
-### 1. Automático — todos os serviços, a cada 5 minutos
+### 1. Automático — todos os serviços, a cada 5 minutos (Cloudflare Worker)
 
-O workflow `auto-check.yml` roda `scripts/check-http.js` a cada 5 minutos
-(o mínimo suportado pelo GitHub Actions) para **todos** os serviços de
-`config/services.json`, sem exceção:
+O ciclo de atualização de ~5 min roda **fora do GitHub Actions**, num
+**Cloudflare Worker** (pasta `/cloudflare-worker`) com **Cron Trigger**,
+100% online e de graça no plano Free — sem VPS, Raspberry Pi ou PC
+pessoal ligado. Motivo: o agendador interno do GitHub Actions
+(`schedule:`) não garante pontualidade em intervalos curtos como `*/5
+* * * *` — na prática o intervalo real observado variou de ~15 min a
+mais de 1h de silêncio total, sem gerar nenhum erro visível. O Cron
+Trigger da Cloudflare (mínimo de 1 min) não sofre desse problema.
 
-- `enabled: true` **e** `url` preenchida → o serviço está apto para
-  checagem automática: faz uma requisição HTTP real, mede a latência (ms)
-  e classifica em `up` (resposta ok) ou `down` (erro/timeout).
-- `enabled: false` → a URL não é usada (ou nem existe); o serviço
-  permanece em **modo manual** (só muda de status via Issue), mas **ainda
-  assim** ganha um novo registro a cada execução, repetindo o último
-  status conhecido (*heartbeat*) — assim a barra de histórico nunca fica
-  parada no tempo, mesmo para sistemas físicos (gerador, elevadores etc.).
+O Worker faz, a cada tick, exatamente a mesma lógica que
+`scripts/check-http.js` fazia localmente — só que lendo/escrevendo
+`data/status.json` e `data/pending-changes.json` via **GitHub Contents
+API** em vez de arquivo local + `git`:
+
+- Se houver uma **mudança manual pendente** (registrada por uma Issue,
+  ver seção 2) → aplica esse status e consome a entrada da fila.
+- Senão, `enabled: true` **e** `url` preenchida → checagem HTTP real
+  (latência + `up`/`down`).
+- Senão → *heartbeat*: repete o último status conhecido.
+
+**Configuração (uma vez só):**
+
+1. Crie uma conta gratuita na [Cloudflare](https://dash.cloudflare.com/sign-up)
+   (não precisa cartão de crédito para o plano Free de Workers).
+2. No GitHub, crie um **Personal Access Token fine-grained** (Settings →
+   Developer settings → Fine-grained tokens) limitado a este repositório,
+   com permissão **Contents: Read and write**.
+3. Na pasta `cloudflare-worker/`, rode:
+   ```
+   npm install
+   npx wrangler login
+   npx wrangler secret put GITHUB_TOKEN        # cole o token do passo 2
+   npx wrangler secret put MANUAL_TRIGGER_SECRET  # qualquer string, só pra testes manuais
+   npx wrangler deploy
+   ```
+4. Pronto — o Worker já fica rodando no Cron Trigger de 5 em 5 min.
+   Para testar sem esperar o próximo tick:
+   ```
+   curl -X POST https://hospital-status-cycle.<seu-subdomínio>.workers.dev/run \
+     -H "Authorization: Bearer <o MANUAL_TRIGGER_SECRET que você definiu>"
+   ```
+5. Para acompanhar logs em tempo real: `npx wrangler tail`.
 
 **Para ativar a checagem HTTP** quando houver uma URL pública, edite
-`config/services.json`:
+`config/services.json` normalmente (`enabled: true` + `url`) e dê push —
+o Worker lê a config a cada tick, sem precisar redeploy.
 
-```json
-{ "id": "prontuario", "name": "Prontuário Eletrônico (PEP)", "url": "https://prontuario.suaintranet.com.br/health", "enabled": true }
-```
+> **Importante:** só é possível checar automaticamente algo com endereço
+> **acessível pela internet pública** — o Worker roda na rede da
+> Cloudflare, então serviços só acessíveis pela rede interna do
+> hospital (sem nada exposto publicamente) continuam precisando de
+> atualização manual via Issue (seção 2).
 
-> **Importante:** os workflows rodam em servidores do GitHub, fora da rede
-> do hospital. Só é possível checar automaticamente algo com endereço
-> **acessível pela internet pública**. Se `rede`/`prontuário` só existirem
-> na rede interna sem nada exposto, considere um pequeno agente rodando
-> dentro da rede do hospital que reporte o status para o repositório.
-
-**Testar/diagnosticar:** o workflow também aceita disparo manual — aba
-*Actions* → `auto-check.yml` → *Run workflow* — útil para confirmar que
-tudo funciona sem esperar o próximo tick do cron. Um `concurrency` guard
-impede que duas execuções rodem sobrepostas caso uma demore mais que 5
-minutos.
+**Fallback manual:** `auto-check.yml` continua existindo no GitHub
+Actions, só com gatilho manual (`workflow_dispatch`, sem `schedule`) —
+aba *Actions* → `auto-check.yml` → *Run workflow*. Serve de rede de
+segurança se o Worker ficar indisponível (token expirado, conta
+suspensa, etc.).
 
 ### 2. Manual — via Issue
 
