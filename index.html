@@ -82,7 +82,6 @@
   .uptime{ font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; margin-top:10px; }
   .uptime.up{ color:var(--up); } .uptime.down{ color:var(--down); } .uptime.maint{ color:var(--maint); } .uptime.unknown{ color:var(--unknown); }
   .uptime-label{ font-size:11.5px; font-weight:400; color:var(--ink-soft); font-family:'Inter', sans-serif; margin-left:6px; }
-  .latency{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9AAAB1; margin-top:4px; }
 
   .history-wrap{ margin-top:16px; }
   .history{ display:flex; gap:3px; height:34px; }
@@ -187,12 +186,9 @@ function cardHtml(s){
   const m = meta(last.status);
   const uptime = computeUptime(s.history);
   const info = serviceInfo[s.id] || { name: s.id, url: null };
-  const latency = typeof last.responseTime === 'number'
-    ? `<div class="latency">Latência: ${last.responseTime} ms</div>`
-    : '';
   const bars = s.history.map((h) => {
     const hm = meta(h.status);
-    return `<div class="bar ${hm.cls}" data-status="${h.status}" data-checked="${h.checkedAt}" data-rt="${h.responseTime ?? ''}"></div>`;
+    return `<div class="bar ${hm.cls}" data-status="${h.status}" data-checked="${h.checkedAt}"></div>`;
   }).join('');
   const uptimeHtml = uptime
     ? `${uptime.pct}%<span class="uptime-label">disponibilidade</span>`
@@ -208,7 +204,6 @@ function cardHtml(s){
       <div>
         ${nameHtml}
         <div class="uptime ${m.cls}">${uptimeHtml}</div>
-        ${latency}
       </div>
       <div class="status-badge ${m.cls}" title="${m.label}">
         <span class="dot ${m.cls}"></span>
@@ -216,7 +211,7 @@ function cardHtml(s){
     </div>
     <div class="history-wrap">
       <div class="history">${bars}</div>
-      <div class="history-caption">Últimos 5 minutos</div>
+      <div class="history-caption">Últimas 30 verificações</div>
     </div>
   `;
 }
@@ -254,9 +249,7 @@ let tappedBar = null;
 
 function showTooltip(bar, x, y){
   const m = meta(bar.dataset.status);
-  const rt = bar.dataset.rt;
-  tooltipEl.innerHTML = `<b>${m.label}</b><br>${fmtDateTime(bar.dataset.checked)}` +
-    (rt ? `<br>Tempo de resposta: ${rt} ms` : '');
+  tooltipEl.innerHTML = `<b>${m.label}</b><br>${fmtDateTime(bar.dataset.checked)}`;
   tooltipEl.style.left = x + 'px';
   tooltipEl.style.top = y + 'px';
   tooltipEl.classList.add('visible');
