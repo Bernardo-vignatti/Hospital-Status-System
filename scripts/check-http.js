@@ -1,17 +1,17 @@
-// Checagem automática por HTTP para sistemas digitais (ex.: rede, prontuário).
+// Atualização automática de status a cada 5 minutos, para TODOS os serviços.
 //
-// Lê config/services.json. Para cada serviço com "enabled": true e uma
-// "url" preenchida, faz uma requisição, mede a latência (ms) e classifica
-// em um dos 3 estados possíveis:
-//   - resposta HTTP ok  -> "up"          (Operante)
-//   - erro ou timeout   -> "down"        (Inoperante)
+// Lê config/services.json. Para cada serviço:
+//   - "enabled": true e "url" preenchida  -> a URL é válida para checagem
+//     automática: faz uma requisição HTTP real, mede a latência (ms) e
+//     classifica em "up" (resposta ok) ou "down" (erro/timeout).
+//   - "enabled": false (ou sem "url")     -> a URL não é usada (ou não
+//     existe); o serviço permanece em modo manual (só muda de status via
+//     Issue), mas AINDA ASSIM ganha um novo registro a cada execução,
+//     repetindo o último status conhecido (heartbeat) — assim a barra de
+//     histórico do site nunca fica "parada no tempo".
 //
-// Cada execução adiciona UM novo segmento ao histórico do serviço (a
-// verificação em si), mantendo só os 30 mais recentes — é assim que a
-// barra de histórico do site é alimentada em tempo real.
-//
-// Serviços sem URL configurada (enabled=false) são ignorados e continuam
-// dependentes de report manual via Issue.
+// Cada execução adiciona UM novo segmento ao histórico de CADA serviço
+// (checagem real ou heartbeat), mantendo só os 30 mais recentes.
 
 const fs = require('fs');
 const path = require('path');
@@ -41,15 +41,9 @@ async function main() {
   const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
   const data = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'));
 
-  const active = config.services.filter((cfg) => cfg.enabled && cfg.url);
-  if (active.length === 0) {
-    console.log('ℹ️  Nenhum serviço com checagem automática habilitada em config/services.json.');
-    return;
-  }
-
   const now = new Date().toISOString();
 
-  for (const cfg of active) {
+  for (const cfg of config.services) {
     const service = data.services.find((s) => s.id === cfg.id);
     if (!service) {
       console.warn(`⚠️  "${cfg.id}" está em config/services.json mas não em data/status.json.`);
@@ -57,15 +51,19 @@ async function main() {
     }
 
     const before = currentStatus(service);
-    const { status, responseTime } = await checkOne(cfg.url);
 
-    pushHistoryEntry(service, { status, checkedAt: now, responseTime });
-
-    console.log(
-      before === status
-        ? `${cfg.name}: sem mudança (${status}, ${responseTime}ms)`
-        : `${cfg.name}: ${before} → ${status} (${responseTime}ms)`
-    );
+    if (cfg.enabled && cfg.url) {
+      const { status, responseTime } = await checkOne(cfg.url);
+      pushHistoryEntry(service, { status, checkedAt: now, responseTime });
+      console.log(
+        before === status
+          ? `${cfg.name}: sem mudança (${status}, ${responseTime}ms)`
+          : `${cfg.name}: ${before} → ${status} (${responseTime}ms)`
+      );
+    } else {
+      pushHistoryEntry(service, { status: before, checkedAt: now, responseTime: null });
+      console.log(`${cfg.name}: heartbeat (${before}, sem checagem HTTP — modo manual)`);
+    }
   }
 
   data.updatedAt = now;
