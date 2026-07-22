@@ -1,6 +1,6 @@
 // Utilitário compartilhado para manipular o histórico de verificações de
-// um serviço. Usado por check-http.js, apply-status-change.js e
-// snapshot.js para evitar duplicar a lógica de "adicionar e cortar em 30".
+// um serviço. Usado por check-http.js e apply-status-change.js para
+// evitar duplicar a lógica de "adicionar e cortar em 30".
 
 const MAX_HISTORY = 30; // segmentos exibidos na barra de histórico do site
 
