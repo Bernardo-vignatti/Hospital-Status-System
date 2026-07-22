@@ -1,24 +1,25 @@
 // Lê o corpo de uma Issue criada a partir do formulário "status-update.yml",
 // interpreta qual sistema e status foram escolhidos, e aplica a mudança em
-// data/status.json. Não mexe no "history" (isso é papel do snapshot.js
-// diário) — apenas atualiza o status atual e lastCheckedAt do serviço.
+// data/status.json. Uma atualização manual via Issue também conta como
+// "uma verificação": adiciona um novo segmento ao histórico do serviço,
+// igual a uma checagem automática.
 //
 // O workflow que chama este script (update-status.yml) faz commit e push
 // diretos assim que a Issue é criada, sem necessidade de Pull Request: a
-// aprovação já aconteceu no momento em que alguém com acesso ao repositório
-// preencheu e enviou o formulário da Issue.
+// aprovação já aconteceu no momento em que alguém com acesso ao
+// repositório preencheu e enviou o formulário da Issue.
 
 const fs = require('fs');
 const path = require('path');
+const { pushHistoryEntry, currentStatus } = require('./lib/history');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
 
 const STATUS_LABEL_TO_CODE = {
-  Operacional: 'ok',
-  Degradado: 'warn',
-  Indisponível: 'down',
-  'Em manutenção': 'maint',
+  Operante: 'up',
+  Inoperante: 'down',
+  Desconhecido: 'unknown',
 };
 
 function extractField(body, label) {
@@ -70,15 +71,14 @@ function main() {
     return;
   }
 
-  if (service.status === statusCode) {
+  if (currentStatus(service) === statusCode) {
     console.log(`"${serviceConfig.name}" já estava como "${statusCode}". Nada a fazer.`);
     setOutput('changed', 'false');
     return;
   }
 
   const now = new Date().toISOString();
-  service.status = statusCode;
-  service.lastCheckedAt = now;
+  pushHistoryEntry(service, { status: statusCode, checkedAt: now, responseTime: null });
   data.updatedAt = now;
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data, null, 2) + '\n');
 
