@@ -7,9 +7,9 @@ body:
     attributes:
       value: |
         Preencha este formulário para reportar uma mudança de status.
-        Isso **não altera o site na hora** — um Pull Request será criado
-        automaticamente e só entra no ar depois que um responsável
-        (CODEOWNERS) revisar e aprovar o merge.
+        Assim que a Issue for enviada, uma automação já atualiza o site
+        (commit direto, sem Pull Request) e fecha esta Issue confirmando
+        o resultado.
 
   - type: dropdown
     id: sistema
@@ -33,10 +33,9 @@ body:
       label: Novo status
       description: Qual o novo status desse sistema?
       options:
-        - Operacional
-        - Degradado
-        - Indisponível
-        - Em manutenção
+        - Operante
+        - Inoperante
+        - Desconhecido
     validations:
       required: true
 
