@@ -1,8 +1,12 @@
 // Lê o corpo de uma Issue criada a partir do formulário "status-update.yml",
 // interpreta qual sistema e status foram escolhidos, e aplica a mudança em
-// data/status.json. Uma atualização manual via Issue também conta como
-// "uma verificação": adiciona um novo segmento ao histórico do serviço,
-// igual a uma checagem automática.
+// data/status.json.
+//
+// Toda atualização (manual ou automática) avança a timeline de TODOS os
+// serviços simultaneamente: o serviço reportado ganha o novo status, e
+// todos os demais ganham um novo segmento repetindo o status em que já
+// estavam — assim a barra de histórico de todos os cards fica sempre
+// sincronizada no mesmo número de posições.
 //
 // O workflow que chama este script (update-status.yml) faz commit e push
 // diretos assim que a Issue é criada, sem necessidade de Pull Request: a
@@ -19,6 +23,7 @@ const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
 const STATUS_LABEL_TO_CODE = {
   Operante: 'up',
   Inoperante: 'down',
+  Manutenção: 'maint',
   Desconhecido: 'unknown',
 };
 
@@ -78,7 +83,13 @@ function main() {
   }
 
   const now = new Date().toISOString();
-  pushHistoryEntry(service, { status: statusCode, checkedAt: now, responseTime: null });
+  data.services.forEach((s) => {
+    if (s.id === service.id) {
+      pushHistoryEntry(s, { status: statusCode, checkedAt: now, responseTime: null });
+    } else {
+      pushHistoryEntry(s, { status: currentStatus(s), checkedAt: now, responseTime: null });
+    }
+  });
   data.updatedAt = now;
   fs.writeFileSync(STATUS_FILE, JSON.stringify(data, null, 2) + '\n');
 
