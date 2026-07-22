@@ -12,6 +12,7 @@
     --line: #E4EAEC; --teal-deep: #0A5B63;
     --up: #1F9D55; --up-bg: #E7F6ED;
     --down: #D14343; --down-bg: #FBE7E7;
+    --maint: #C98A00; --maint-bg: #FCF1D6;
     --unknown: #8996A0; --unknown-bg: #EDF0F1;
     --shadow-sm: 0 1px 2px rgba(16,34,43,0.05);
     --shadow-md: 0 10px 28px -16px rgba(16,34,43,0.22), 0 2px 6px -2px rgba(16,34,43,0.06);
@@ -30,12 +31,14 @@
   .banner{ display:flex; align-items:center; gap:14px; padding:18px 22px; border-radius:12px; margin-bottom:30px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16px; border:1px solid transparent; box-shadow:var(--shadow-sm); transition:background-color .3s ease, color .3s ease, border-color .3s ease; }
   .banner.up{ background:var(--up-bg); color:#146538; border-color:#BEE6CC; }
   .banner.down{ background:var(--down-bg); color:#8F2A2A; border-color:#F1BFBF; }
+  .banner.maint{ background:var(--maint-bg); color:#7A5400; border-color:#EFDBA0; }
   .banner.unknown{ background:var(--unknown-bg); color:#4B5B63; border-color:#D7DEE1; }
 
   .dot{ width:11px; height:11px; border-radius:50%; display:inline-block; position:relative; flex-shrink:0; }
   .dot::after{ content:''; position:absolute; inset:-5px; border-radius:50%; opacity:0.35; }
   .dot.up{ background:var(--up); } .dot.up::after{ background:var(--up); animation:pulse 2.2s ease-out infinite; }
   .dot.down{ background:var(--down); }
+  .dot.maint{ background:var(--maint); }
   .dot.unknown{ background:var(--unknown); }
   @keyframes pulse{ 0%{ transform:scale(0.6); opacity:0.5; } 100%{ transform:scale(1.8); opacity:0; } }
   @media (prefers-reduced-motion: reduce){ .dot::after{ animation:none; display:none; } .card{ animation:none !important; } }
@@ -52,10 +55,10 @@
   .card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
   .name{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:16.5px; margin:0 0 7px; letter-spacing:-0.005em; }
   .status-label{ font-family:'IBM Plex Mono', monospace; font-size:12px; display:inline-flex; align-items:center; }
-  .status-label.up{ color:var(--up); } .status-label.down{ color:var(--down); } .status-label.unknown{ color:var(--unknown); }
+  .status-label.up{ color:var(--up); } .status-label.down{ color:var(--down); } .status-label.maint{ color:var(--maint); } .status-label.unknown{ color:var(--unknown); }
 
   .uptime{ font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:600; text-align:right; white-space:nowrap; }
-  .uptime.up{ color:var(--up); } .uptime.down{ color:var(--down); } .uptime.unknown{ color:var(--unknown); }
+  .uptime.up{ color:var(--up); } .uptime.down{ color:var(--down); } .uptime.maint{ color:var(--maint); } .uptime.unknown{ color:var(--unknown); }
   .uptime span{ font-size:11.5px; font-weight:400; color:var(--ink-soft); display:block; margin-top:3px; white-space:normal; }
   .latency{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9AAAB1; text-align:right; margin-top:5px; }
 
@@ -65,7 +68,7 @@
     flex:1; border-radius:3px; min-width:3px; cursor:pointer;
     transition:background-color .3s ease, transform .15s ease;
   }
-  .bar.up{ background:var(--up); } .bar.down{ background:var(--down); } .bar.unknown{ background:var(--unknown); opacity:0.55; }
+  .bar.up{ background:var(--up); } .bar.down{ background:var(--down); } .bar.maint{ background:var(--maint); } .bar.unknown{ background:var(--unknown); opacity:0.55; }
   .bar:hover, .bar.tapped{ transform:scaleY(1.12); }
   .history-caption{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#9AAAB1; margin-top:8px; }
 
@@ -103,6 +106,7 @@
 const STATUS_META = {
   up:      { label: 'Operante',    cls: 'up' },
   down:    { label: 'Inoperante',  cls: 'down' },
+  maint:   { label: 'Manutenção',  cls: 'maint' },
   unknown: { label: 'Desconhecido', cls: 'unknown' },
 };
 
@@ -135,10 +139,12 @@ function renderBanner(current){
   const banner = document.getElementById('banner');
   const text = document.getElementById('banner-text');
   const hasDown = current.some(s => s === 'down');
+  const hasMaint = current.some(s => s === 'maint');
   const hasUnknown = current.some(s => s === 'unknown');
-  banner.classList.remove('up','down','unknown');
+  banner.classList.remove('up','down','maint','unknown');
   banner.style.display = 'flex';
   if(hasDown){ banner.classList.add('down'); text.textContent = 'Um ou mais sistemas estão indisponíveis'; }
+  else if(hasMaint){ banner.classList.add('maint'); text.textContent = 'Um ou mais sistemas estão em manutenção'; }
   else if(hasUnknown){ banner.classList.add('unknown'); text.textContent = 'Status de um ou mais sistemas está desconhecido'; }
   else { banner.classList.add('up'); text.textContent = 'Todos os sistemas operantes'; }
 }
