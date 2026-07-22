@@ -65,9 +65,8 @@ A partir daí, o workflow `auto-check.yml` roda **a cada 5 minutos** (o
 mínimo suportado pelo GitHub Actions), faz a checagem, mede o tempo de
 resposta (latência, em ms) e atualiza `data/status.json` sozinho:
 
-- responde rápido e com sucesso → `ok`
-- responde, mas devagar (>3s) ou com erro HTTP → `warn`
-- não responde / timeout → `down`
+- responde com sucesso (HTTP 2xx/3xx) → `up` (Operante)
+- erro HTTP ou timeout → `down` (Inoperante)
 
 **Importante:** os workflows do GitHub Actions rodam em servidores da
 própria GitHub, fora da rede do hospital. Só é possível checar
@@ -80,22 +79,44 @@ repositório seria uma alternativa.
 Enquanto a checagem automática de um sistema estiver desligada, ele
 continua no modo manual (Issue) normalmente.
 
-## Snapshot diário e histórico
+## Estados possíveis
 
-Todo dia às 03h (`daily-snapshot.yml`), o status atual de cada sistema é
-adicionado ao histórico (`history`) usado nas barrinhas de disponibilidade
-do site, mantendo apenas os **7 registros mais recentes**. Cada registro
-tem o formato:
+Cada serviço tem exatamente um de 3 estados, sempre igual ao último item do
+seu `history`:
+
+- **Operante** (`up`) — funcionando normalmente.
+- **Inoperante** (`down`) — fora do ar / erro / timeout.
+- **Desconhecido** (`unknown`) — sem verificação recente confiável.
+
+## Histórico (30 verificações)
+
+Cada serviço guarda as **30 verificações mais recentes** em `history`
+(mais antiga primeiro, mais recente por último — é essa última posição que
+aparece na ponta direita da barra no site). Cada registro:
 
 ```json
-{ "status": "ok", "checkedAt": "2026-07-21T18:43:12Z", "responseTime": 153 }
+{ "status": "up", "checkedAt": "2026-07-21T18:43:12Z", "responseTime": 153 }
 ```
 
-`responseTime` vem da última checagem HTTP automática (`check-http.js`);
-para sistemas sem checagem HTTP, fica `null`. Os campos `lastCheckedAt` e
-`lastResponseTime` de cada serviço em `data/status.json` são atualizados
-em tempo quase real a cada execução do `auto-check.yml` (a cada 5 min),
-independentemente do snapshot diário.
+Três coisas adicionam um novo registro ao histórico (sempre cortando para
+manter só os 30 mais recentes):
+
+1. **`check-http.js`** — a cada 5 minutos, para serviços com checagem HTTP
+   habilitada (1 registro por checagem real).
+2. **`apply-status-change.js`** — quando alguém reporta uma mudança via
+   Issue (1 registro por mudança).
+3. **`snapshot.js`** — 1x por dia (03h), para *todos* os serviços,
+   repetindo o último status conhecido. Garante que serviços físicos sem
+   checagem HTTP (que só mudam via Issue, às vezes raramente) continuem
+   tendo a barra de histórico "viva" em vez de parada.
+
+A **disponibilidade (%)** exibida no site é calculada só sobre os
+registros com resultado conhecido (`up`/`down`) dentre esses 30;
+`unknown` não conta como operante nem entra no denominador — é ausência
+de dado, não uma medição de falha.
+
+`responseTime` vem da checagem HTTP mais recente; para mudanças manuais
+(Issue) ou heartbeat diário, fica `null`.
 
 ## Como publicar (GitHub Pages)
 
@@ -110,8 +131,8 @@ independentemente do snapshot diário.
 1. Acrescente um item em `config/services.json` (`id`, `name`, `url`,
    `enabled`).
 2. Acrescente o item correspondente (mesmo `id`) em `data/status.json`,
-   com `status`, `lastCheckedAt`, `lastResponseTime` e um `history` inicial
-   (pode ser um único registro).
+   com um `history` inicial (pode ser um único registro, ex.:
+   `{"status":"up","checkedAt":"<agora em ISO 8601>","responseTime":null}`).
 3. Rode `node scripts/validate.js` localmente para conferir antes de
    commitar — ele valida que os dois arquivos batem.
 
