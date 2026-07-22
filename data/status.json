@@ -115,22 +115,22 @@
           "responseTime": null
         },
         {
-          "status": "down",
+          "status": "up",
           "checkedAt": "2026-07-22T14:23:08.723Z",
           "responseTime": null
         },
         {
-          "status": "unknown",
+          "status": "up",
           "checkedAt": "2026-07-22T15:08:41.105Z",
           "responseTime": null
         },
         {
-          "status": "unknown",
+          "status": "up",
           "checkedAt": "2026-07-22T15:37:19.344Z",
           "responseTime": null
         },
         {
-          "status": "unknown",
+          "status": "up",
           "checkedAt": "2026-07-22T15:55:20.312Z",
           "responseTime": null
         },
@@ -435,17 +435,17 @@
           "responseTime": null
         },
         {
-          "status": "maint",
+          "status": "up",
           "checkedAt": "2026-07-22T15:37:19.344Z",
           "responseTime": null
         },
         {
-          "status": "maint",
+          "status": "up",
           "checkedAt": "2026-07-22T15:55:20.312Z",
           "responseTime": null
         },
         {
-          "status": "maint",
+          "status": "up",
           "checkedAt": "2026-07-22T16:10:49.627Z",
           "responseTime": null
         },
