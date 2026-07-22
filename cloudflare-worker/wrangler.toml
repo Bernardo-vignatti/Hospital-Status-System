@@ -1,0 +1,16 @@
+name = "hospital-status-cycle"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# Roda a cada 5 minutos. GitHub Contents API, custo zero, sem máquina.
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+GITHUB_OWNER = "Bernardo-vignatti"
+GITHUB_REPO = "Hospital-Status-System"
+GITHUB_BRANCH = "main"
+
+# Secrets (NÃO colocar aqui — configurar via `wrangler secret put`):
+#   GITHUB_TOKEN            -> PAT fine-grained com Contents: Read and write neste repo
+#   MANUAL_TRIGGER_SECRET   -> string qualquer, só para testar via POST /run
