@@ -7,6 +7,7 @@ const { MAX_HISTORY } = require('./lib/history');
 
 const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
+const PENDING_FILE = path.join(__dirname, '..', 'data', 'pending-changes.json');
 const VALID_STATUS = ['up', 'down', 'maint', 'unknown'];
 
 function fail(msg) {
@@ -79,5 +80,23 @@ data.services.forEach((s, i) => {
 configIds.forEach((id) => {
   if (!seenIds.has(id)) fail(`config/services.json define "${id}" mas ele não existe em data/status.json`);
 });
+
+// data/pending-changes.json: fila de mudanças manuais ainda não aplicadas
+// pelo ciclo de auto-check. Opcional (pode não existir ainda em repos
+// antigos), mas se existir precisa ter o formato certo.
+if (fs.existsSync(PENDING_FILE)) {
+  const pending = readJson(PENDING_FILE, 'data/pending-changes.json');
+  if (typeof pending.changes !== 'object' || pending.changes === null || Array.isArray(pending.changes)) {
+    fail('data/pending-changes.json: "changes" precisa ser um objeto');
+  }
+  Object.entries(pending.changes).forEach(([serviceId, change]) => {
+    const ctx = `data/pending-changes.json changes["${serviceId}"]`;
+    if (!configIds.has(serviceId)) fail(`${ctx}: id não existe em config/services.json`);
+    if (typeof change !== 'object' || change === null) fail(`${ctx}: precisa ser um objeto {status, requestedAt, issueNumber}`);
+    if (!VALID_STATUS.includes(change.status)) fail(`${ctx}: "status" inválido "${change.status}"`);
+    if (!change.requestedAt || isNaN(Date.parse(change.requestedAt))) fail(`${ctx}: "requestedAt" ausente ou inválido`);
+    if (change.issueNumber != null && typeof change.issueNumber !== 'number') fail(`${ctx}: "issueNumber" precisa ser número ou null`);
+  });
+}
 
 console.log(`✅ data/status.json e config/services.json são válidos (${data.services.length} serviços).`);
