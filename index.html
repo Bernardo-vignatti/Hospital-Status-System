@@ -22,6 +22,15 @@
   .wrap{ max-width:760px; margin:0 auto; padding:0 20px 72px; }
   @media (min-width: 900px){ .wrap{ max-width:820px; padding:0 24px 88px; } }
 
+  /* Smartphones: empilha nome/status acima de disponibilidade/latência,
+     em vez de lado a lado, para nunca haver corte ou sobreposição
+     quando o nome do serviço ocupa mais de uma linha. */
+  @media (max-width: 480px){
+    .card-top{ flex-direction:column; align-items:flex-start; gap:10px; }
+    .uptime, .latency{ text-align:left; }
+    h1{ font-size:26px; }
+  }
+
   header{ padding:40px 0 26px; border-bottom:1px solid var(--line); margin-bottom:30px; }
   .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--teal-deep); margin:0 0 10px; }
   h1{ font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
@@ -55,7 +64,7 @@
   .status-label.up{ color:var(--up); } .status-label.down{ color:var(--down); } .status-label.unknown{ color:var(--unknown); }
 
   .uptime{ font-family:'IBM Plex Mono', monospace; font-size:21px; font-weight:600; text-align:right; white-space:nowrap; }
-  .uptime span{ font-size:11.5px; font-weight:400; color:var(--ink-soft); display:block; margin-top:3px; }
+  .uptime span{ font-size:11.5px; font-weight:400; color:var(--ink-soft); display:block; margin-top:3px; white-space:normal; }
   .latency{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:#9AAAB1; text-align:right; margin-top:5px; }
 
   .history-wrap{ margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
@@ -155,7 +164,7 @@ function cardHtml(s){
     return `<div class="bar ${hm.cls}" data-status="${h.status}" data-checked="${h.checkedAt}" data-rt="${h.responseTime ?? ''}"></div>`;
   }).join('');
   const uptimeHtml = uptime
-    ? `${uptime.pct}%<span>disponibilidade (${uptime.known} verificações)</span>`
+    ? `${uptime.pct}%<span>disponibilidade</span>`
     : `—<span>sem dados suficientes</span>`;
 
   return `
@@ -173,7 +182,7 @@ function cardHtml(s){
     </div>
     <div class="history-wrap">
       <div class="history">${bars}</div>
-      <div class="history-caption">Últimas ${s.history.length} verificações</div>
+      <div class="history-caption">Últimos 5 minutos</div>
     </div>
   `;
 }
