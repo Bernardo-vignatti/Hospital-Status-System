@@ -35,6 +35,7 @@ body:
       options:
         - Operante
         - Inoperante
+        - Manutenção
         - Desconhecido
     validations:
       required: true
