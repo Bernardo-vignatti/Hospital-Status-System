@@ -60,6 +60,7 @@ h1{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:30px; ma
 .hero-text .status-word.maint{ color:var(--maint); } .hero-text .status-word.unknown{ color:var(--unknown); }
 .hero-caption{ font-family:'Inter', sans-serif; font-size:13.5px; color:var(--ink-soft); margin:-10px 0 0; }
 
+
 /* ---- Título de seção ---- */
 .section-title{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:25px; margin:40px 0 16px; letter-spacing:-0.01em; }
 .section-title .section-title-soft{ color:var(--navy-soft); font-weight:600; }
@@ -127,29 +128,27 @@ a.card-link:focus-visible .card{ outline:2px solid var(--navy); outline-offset:2
 
 /* ---- Grade de disponibilidade (24h / 7d / 30d / 90d) ---- */
 .uptime-grid{
-  display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;
+  display:grid; grid-template-columns:repeat(2, 1fr); gap:14px;
 }
-@media (min-width: 640px){ .uptime-grid{ grid-template-columns:repeat(4, 1fr); } }
+@media (min-width: 640px){ .uptime-grid{ grid-template-columns:repeat(4, 1fr); gap:16px; } }
 .uptime-tile{
-  background:var(--panel); border:1px solid var(--line); border-radius:14px;
-  padding:18px 16px; box-shadow:var(--shadow-sm); text-align:left;
-  display:flex; flex-direction:column; gap:6px; min-width:0;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:26px 18px; box-shadow:var(--shadow-sm); text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:8px; min-width:0;
 }
-.uptime-tile .tile-pct{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:26px; line-height:1.1; }
+.uptime-tile .tile-pct{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:30px; line-height:1.1; letter-spacing:-0.01em; }
 .uptime-tile .tile-pct.up{ color:var(--up); } .uptime-tile .tile-pct.down{ color:var(--down); }
 .uptime-tile .tile-pct.maint{ color:var(--maint); } .uptime-tile .tile-pct.unknown{ color:var(--unknown); }
-.uptime-tile .tile-pct.na{ color:var(--navy-soft); font-size:20px; }
-.uptime-tile .tile-label{ font-family:'Inter', sans-serif; font-size:13px; color:var(--ink-soft); }
-.uptime-tile .tile-sub{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:#9AAAB1; }
+.uptime-tile .tile-pct.na{ color:var(--navy-soft); font-size:22px; }
+.uptime-tile .tile-label{ font-family:'Inter', sans-serif; font-size:12.5px; color:var(--ink-soft); }
 
 /* ---- Linha de metadados (chips) na página de detalhe ---- */
-.meta-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+.meta-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:6px; }
 .meta-chip{
-  display:inline-flex; align-items:center; gap:7px; background:var(--bg);
-  border:1px solid var(--line); border-radius:999px; padding:7px 13px;
+  display:inline-flex; align-items:center; gap:6px; background:var(--bg);
+  border:1px solid var(--line); border-radius:999px; padding:6px 14px;
   font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft);
 }
-.meta-chip b{ font-family:'Inter', sans-serif; font-weight:600; color:var(--ink); }
 .meta-chip a{ color:inherit; text-decoration:none; }
 .meta-chip a:hover{ text-decoration:underline; }
 
