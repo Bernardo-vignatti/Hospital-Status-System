@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status do serviço — Hospital Fátima Flores da Cunha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/common.css">
+<style>
+  /* Estilos específicos desta página (detalhe) — o resto vem de common.css */
+  .current-since{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); margin-top:-6px; }
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <div class="top-bar-inner">
+    <div class="top-bar-head">
+      <img class="logo-img" src="assets/hospital-fatima-logo.png" alt="Hospital Fátima Flores da Cunha">
+      <a class="back-link" href="index.html"><span class="back-arrow">←</span> Voltar para a lista</a>
+    </div>
+    <h1 id="page-title">Status do serviço</h1>
+    <p class="sub" id="sub-updated">Carregando…</p>
+  </div>
+</div>
+<div class="wrap" id="content" style="display:none;">
+  <div class="hero-card">
+    <div class="hero-icon-halo" id="hero-halo">
+      <div class="hero-icon" id="hero-icon"></div>
+    </div>
+    <p class="hero-text" id="hero-text"></p>
+    <p class="current-since" id="current-since"></p>
+    <p class="hero-caption">Nova verificação a cada ~5 minutos</p>
+    <div class="meta-row" id="meta-row"></div>
+  </div>
+
+  <h2 class="section-title">Histórico <span class="section-title-soft" id="history-count-title"></span></h2>
+  <p class="section-sub" id="history-sub"></p>
+  <div class="card">
+    <div class="history history-lg" id="history-bars"></div>
+    <div class="history-caption">Mais antigo → mais recente · toque numa barra para ver o horário exato</div>
+  </div>
+
+  <h2 class="section-title">Disponibilidade</h2>
+  <p class="section-sub">Percentual calculado sobre os registros conhecidos (Operante/Inoperante/Manutenção) dentro de cada janela. Sem registro suficiente na janela, mostramos “sem dados” em vez de inventar um número.</p>
+  <div class="uptime-grid" id="uptime-grid"></div>
+</div>
+
+<div class="wrap" id="not-found" style="display:none;">
+  <div class="not-found">
+    <h2>Serviço não encontrado</h2>
+    <p>Não encontramos esse serviço na configuração atual do sistema.</p>
+    <a href="index.html">← Voltar para a lista de serviços</a>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+<script src="assets/js/common.js"></script>
+<script>
+const POLL_INTERVAL_MS = 30000; // ~30s — só para perceber mudanças mais cedo na UI
+const CLOCK_INTERVAL_MS = 1000; // relógio/contagem regressiva, sem rede
+
+const UPTIME_WINDOWS = [
+  { key: '24h', label: 'Últimas 24 horas', ms: 24 * 60 * 60 * 1000 },
+  { key: '7d',  label: 'Últimos 7 dias',   ms: 7 * 24 * 60 * 60 * 1000 },
+  { key: '30d', label: 'Últimos 30 dias',  ms: 30 * 24 * 60 * 60 * 1000 },
+  { key: '90d', label: 'Últimos 90 dias',  ms: 90 * 24 * 60 * 60 * 1000 },
+];
+
+const serviceId = new URLSearchParams(window.location.search).get('id');
+
+let serviceInfo = null;       // { id, name, url }
+let lastUpdatedAt = null;
+let lastUpdatedAtDate = null;
+let lastServiceJson = null;
+let notFound = false;
+
+function fmtHours(ms){
+  const totalMin = Math.round(ms / 60000);
+  if(totalMin < 60) return `${totalMin} min`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m ? `${h}h ${m}min` : `${h}h`;
+}
+
+function renderHero(service){
+  const last = service.history[service.history.length - 1];
+  const m = HSS.meta(last.status);
+  const halo = document.getElementById('hero-halo');
+  const icon = document.getElementById('hero-icon');
+  const text = document.getElementById('hero-text');
+  const since = document.getElementById('current-since');
+
+  halo.className = 'hero-icon-halo ' + m.cls;
+  icon.className = 'hero-icon ' + m.cls;
+  text.innerHTML = `${serviceInfo.name} está <span class="status-word ${m.cls}">${m.label.toLowerCase()}</span>`;
+
+  // Há quanto tempo o serviço está no estado atual, contando registros
+  // contíguos com o mesmo status a partir do mais recente. Baseado só no
+  // histórico disponível (até 30 registros) — por isso o texto deixa isso
+  // explícito em vez de sugerir uma duração absoluta.
+  let streak = 0;
+  for(let i = service.history.length - 1; i >= 0; i--){
+    if(service.history[i].status === last.status) streak++;
+    else break;
+  }
+  const first = service.history[service.history.length - streak];
+  const durationMs = new Date(last.checkedAt).getTime() - new Date(first.checkedAt).getTime();
+  since.textContent = streak > 1
+    ? `Nesse estado há ${fmtHours(durationMs)} (nos registros disponíveis)`
+    : `Estado alterado na verificação mais recente`;
+}
+
+function renderMeta(service){
+  const row = document.getElementById('meta-row');
+  const last = service.history[service.history.length - 1];
+  const chips = [];
+
+  chips.push(`<span class="meta-chip">Última verificação: <b>${HSS.fmtDateTime(last.checkedAt)}</b></span>`);
+
+  const responseTimes = service.history.map(h => h.responseTime).filter(rt => rt != null);
+  if(responseTimes.length){
+    const avg = Math.round(responseTimes.reduce((a,b) => a+b, 0) / responseTimes.length);
+    chips.push(`<span class="meta-chip">Tempo de resposta médio: <b>${avg} ms</b></span>`);
+  }
+
+  if(serviceInfo.url){
+    chips.push(`<span class="meta-chip">🔗 <a href="${serviceInfo.url}" target="_blank" rel="noopener">Visitar site</a></span>`);
+  }
+
+  row.innerHTML = chips.join('');
+}
+
+function renderHistory(service){
+  const wrap = document.getElementById('history-bars');
+  wrap.innerHTML = HSS.barsHtml(service.history);
+  document.getElementById('history-count-title').textContent = `· últimas ${service.history.length} verificações`;
+
+  const coverageMs = HSS.historyCoverageMs(service.history);
+  document.getElementById('history-sub').textContent = coverageMs > 0
+    ? `Cobrindo aproximadamente ${fmtHours(coverageMs)} de verificações registradas.`
+    : 'Ainda não há verificações suficientes para formar um período.';
+}
+
+function renderUptimeGrid(service){
+  const grid = document.getElementById('uptime-grid');
+  const last = service.history[service.history.length - 1];
+  const currentCls = HSS.meta(last.status).cls;
+
+  grid.innerHTML = UPTIME_WINDOWS.map(w => {
+    const result = HSS.computeUptime(service.history, w.ms);
+    const pctHtml = result
+      ? `<span class="tile-pct ${currentCls}">${result.pct}%</span>`
+      : `<span class="tile-pct na">sem dados</span>`;
+    const subHtml = result ? `<span class="tile-sub">${result.known} verificação(ões) na janela</span>` : '';
+    return `
+      <div class="uptime-tile">
+        ${pctHtml}
+        <span class="tile-label">${w.label}</span>
+        ${subHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderAll(service){
+  renderHero(service);
+  renderMeta(service);
+  renderHistory(service);
+  renderUptimeGrid(service);
+}
+
+function updateClock(){
+  const sub = document.getElementById('sub-updated');
+  if(!lastUpdatedAtDate || !sub) return;
+  sub.textContent = `Atualizado ${HSS.relativeLabel(lastUpdatedAtDate)} · próxima atualização ${HSS.nextUpdateLabel(lastUpdatedAtDate)}`;
+}
+
+function showNotFound(){
+  notFound = true;
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('not-found').style.display = 'block';
+  document.getElementById('page-title').textContent = 'Serviço não encontrado';
+  document.getElementById('sub-updated').textContent = '';
+}
+
+async function pollStatus(isFirstLoad){
+  try{
+    const data = await HSS.loadStatus();
+    const service = data.services.find(s => s.id === serviceId);
+
+    if(!service){ showNotFound(); return; }
+
+    if(!isFirstLoad && data.updatedAt === lastUpdatedAt){ updateClock(); return; }
+
+    const serialized = JSON.stringify(service);
+    if(serialized !== lastServiceJson){
+      renderAll(service);
+      lastServiceJson = serialized;
+    }
+
+    lastUpdatedAt = data.updatedAt;
+    lastUpdatedAtDate = new Date(data.updatedAt);
+    updateClock();
+
+    if(isFirstLoad){
+      document.getElementById('content').style.display = 'block';
+    }
+  }catch(e){
+    if(isFirstLoad){
+      document.getElementById('sub-updated').textContent = 'Não foi possível carregar o status agora.';
+    }
+    console.error(e);
+  }
+}
+
+async function init(){
+  if(!serviceId){ showNotFound(); return; }
+
+  try{
+    const info = await HSS.loadServiceInfo();
+    serviceInfo = info[serviceId];
+  }catch(e){
+    console.error('Falha ao carregar config/services.json', e);
+  }
+
+  if(!serviceInfo){ showNotFound(); return; }
+
+  document.title = `${serviceInfo.name} — Status — Hospital Fátima Flores da Cunha`;
+  document.getElementById('page-title').textContent = serviceInfo.name;
+
+  HSS.wireHistoryTooltips(document.getElementById('history-bars'));
+
+  await pollStatus(true);
+  if(!notFound){
+    setInterval(() => pollStatus(false), POLL_INTERVAL_MS);
+    setInterval(updateClock, CLOCK_INTERVAL_MS);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
