@@ -21,7 +21,10 @@ a cada ~30 segundos e atualiza a interface sozinho, sem precisar de F5.
 ## Estrutura
 
 ```
-index.html                              → o site (lê config/services.json e data/status.json, faz polling a cada ~30s)
+index.html                              → lista de serviços (lê config/services.json e data/status.json, faz polling a cada ~30s)
+servico.html                            → página de detalhe de UM serviço (servico.html?id=<id>), ver seção "Página de detalhes"
+assets/css/common.css                   → estilos compartilhados por index.html e servico.html
+assets/js/common.js                     → lógica compartilhada (status, disponibilidade, datas, tooltip do histórico)
 config/services.json                    → fonte única: id, nome, url e enabled de cada serviço
 data/status.json                        → updatedAt + histórico (até 30 registros) de cada serviço (fonte da verdade do status atual)
 data/pending-changes.json               → fila de mudanças pendentes vindas de Issue, ainda não aplicadas ao ciclo
@@ -37,9 +40,55 @@ cloudflare-worker/wrangler.toml         → config do Worker (cron, owner/repo/b
 .github/workflows/auto-check.yml        → hoje só com gatilho manual (workflow_dispatch) — fallback caso o Worker fique indisponível
 .github/workflows/update-status.yml     → dispara ao abrir Issue → apply-status-change.js → registra na fila + fecha a Issue
 .github/workflows/validate-status.yml   → valida status.json/services.json em PR e push
-assets/                                 → imagens usadas pelo site (ex.: logo do hospital)
+assets/hospital-fatima-logo.png         → logo do hospital, usada no topo das duas páginas
+assets/screenshots/                     → capturas de tela usadas neste README
 CODEOWNERS                              → vestigial (ver "Configuração pendente"), LICENSE → licença do repositório
 ```
+
+## Página de detalhes de cada serviço
+
+Além da lista (`index.html`), cada serviço tem sua própria página de status:
+clicando em qualquer card da lista, o usuário é levado para
+`servico.html?id=<id>` (ex.: `servico.html?id=site`), que mostra só os dados
+daquele serviço.
+
+<p align="center">
+  <img src="assets/screenshots/lista-servicos.png" alt="Lista de serviços" width="270">
+  &nbsp;&nbsp;
+  <img src="assets/screenshots/detalhe-servico.png" alt="Página de detalhe de um serviço" width="270">
+</p>
+
+**Fluxo de navegação:** lista de serviços → clique no card → página de
+detalhe do serviço → link "← Voltar" retorna à lista. Não há novidade de
+back-end aqui: as duas páginas leem os mesmos `config/services.json` e
+`data/status.json`, com o mesmo polling de ~30s — a página de detalhe só
+filtra tudo para um único `id`, então ela nunca fica fora de sincronia com o
+resto do sistema.
+
+Na página de detalhe:
+
+- **Estado atual** — nome do serviço, status colorido (mesmas 4 cores/estados
+  do restante do site) e há quanto tempo está nesse estado.
+- **Histórico** — a mesma barra de verificações da lista, só que maior, com
+  tooltip ao tocar/passar o mouse mostrando horário exato (e tempo de
+  resposta, quando disponível).
+- **Disponibilidade** — cartões com o percentual de uptime em 24h, 7 dias,
+  30 dias e 90 dias, calculados sobre o histórico real do serviço (mesma
+  regra de `up`/`down`/`maint` descrita em ["Disponibilidade
+  (%)"](#disponibilidade-)). Como o histórico guarda só os **30 registros
+  mais recentes** (ver ["Timeline sincronizada"](#timeline-sincronizada-histórico)),
+  janelas mais longas (30/90 dias) mostram "—" em vez de um número até que o
+  sistema acumule dado real cobrindo esse período — nunca um valor estimado.
+
+O design é propositalmente minimalista: poucas palavras, hierarquia clara
+(estado → histórico → disponibilidade) e o mesmo espaçamento generoso do
+restante do site, para o status ficar claro num único olhar em qualquer
+tamanho de tela (celular, tablet, notebook ou monitor grande).
+
+**Arquitetura:** `index.html` e `servico.html` compartilham
+`assets/css/common.css` (visual) e `assets/js/common.js` (cálculo de
+disponibilidade, formatação de datas/horas, leitura dos JSONs e tooltip do
+histórico) — a lógica não é duplicada entre as duas páginas, só reutilizada.
 
 ## Fluxo completo
 
@@ -246,6 +295,12 @@ estado atual do serviço.
 3. Rode `node scripts/validate.js` localmente para conferir antes de
    commitar — ele valida que os dois arquivos batem e que todo `status`
    usado é um dos 4 estados válidos.
+
+Não é preciso nenhum passo extra para a página de detalhe: o card na lista e
+`servico.html?id=<id>` já funcionam para o novo serviço assim que os dois
+arquivos acima forem atualizados, porque ambas as páginas leem os mesmos
+`config/services.json`/`data/status.json` em vez de ter algo hardcoded por
+serviço.
 
 ## Configuração pendente
 
