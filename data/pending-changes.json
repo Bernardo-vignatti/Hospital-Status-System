@@ -1,9 +1,9 @@
 {
   "changes": {
     "gerador": {
-      "status": "maint",
-      "requestedAt": "2026-07-24T21:22:53.247Z",
-      "issueNumber": 19
+      "status": "up",
+      "requestedAt": "2026-07-24T21:24:27.648Z",
+      "issueNumber": 20
     }
   }
 }
