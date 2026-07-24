@@ -7,10 +7,17 @@ body:
     attributes:
       value: |
         Preencha este formulário para reportar uma mudança de status.
-        Assim que a Issue for enviada, uma automação já atualiza o site
-        (commit direto, sem Pull Request) e fecha esta Issue confirmando
-        o resultado.
+        A automação registra a mudança na fila e ela aparece no site no
+        próximo ciclo de atualização (a cada ~5 min).
 
+        > Apenas colaboradores autorizados do repositório conseguem
+        > alterar o painel. Issues de outras pessoas são fechadas
+        > automaticamente sem alterar nada.
+
+  # ⚠️ As opções abaixo precisam bater EXATAMENTE com o campo "name" de
+  # cada serviço em config/services.json. O script scripts/validate.js
+  # falha o CI se elas divergirem — antes essa divergência fazia o
+  # formulário falhar em silêncio para 4 dos 7 serviços.
   - type: dropdown
     id: sistema
     attributes:
@@ -18,11 +25,11 @@ body:
       description: Qual sistema teve mudança de status?
       options:
         - Gerador de Energia
-        - Gases Medicinais / Oxigênio
-        - Rede de Dados / Internet
-        - Prontuário Eletrônico (PEP)
+        - Gás Oxigênio
+        - Site (hfatima.com.br)
+        - Prontuário Eletrônico
         - Elevadores
-        - Climatização — UTI e Centro Cirúrgico
+        - Climatização
         - Abastecimento de Água
     validations:
       required: true

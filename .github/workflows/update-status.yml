@@ -4,21 +4,29 @@ name: Atualizar status via Issue
 # ".github/ISSUE_TEMPLATE/status-update.yml". NÃO escreve data/status.json
 # e NÃO avança a timeline diretamente — só registra a mudança desejada em
 # data/pending-changes.json (fila). A timeline só avança de fato no
-# próximo ciclo do auto-check.yml (~5 min), que é quem lê e aplica essa
+# próximo ciclo do Cloudflare Worker (~5 min), que é quem lê e aplica essa
 # fila para todos os serviços ao mesmo tempo.
+#
+# ⚠️ CONTROLE DE ACESSO (importante):
+# Este repositório é PÚBLICO, e em repositório público QUALQUER conta do
+# GitHub consegue abrir uma Issue — não é preciso ser colaborador. Por
+# isso o job só roda se quem abriu a Issue for dono, membro da
+# organização ou colaborador com acesso ao repositório
+# (github.event.issue.author_association). Sem essa checagem, um
+# desconhecido conseguiria marcar "Gerador de Energia = Inoperante" no
+# painel público do hospital.
+#
+# Valores possíveis de author_association: OWNER, MEMBER, COLLABORATOR,
+# CONTRIBUTOR, FIRST_TIME_CONTRIBUTOR, FIRST_TIMER, NONE. Só os três
+# primeiros representam alguém com acesso concedido ao repositório.
 #
 # O "concurrency.group" é o MESMO do auto-check.yml de propósito: isso
 # serializa as duas workflows no GitHub Actions, garantindo que uma Issue
 # processada nunca faça commit/push ao mesmo tempo que um tick do ciclo
 # automático (evitando corrida de git e leitura inconsistente da fila).
-# É essa serialização, junto da fila, que forma o "relógio único" do
-# sistema: uma Issue pode chegar a qualquer momento, mas ela só afeta o
-# que o próximo tick do ciclo vai aplicar — nunca reinicia, adianta ou
-# atrasa o cronograma de 5 minutos.
 #
 # Commit e push diretos, sem Pull Request: a aprovação já ocorreu no
-# momento em que alguém com acesso ao repositório preencheu e enviou o
-# formulário.
+# momento em que alguém AUTORIZADO preencheu e enviou o formulário.
 
 on:
   issues:
@@ -34,8 +42,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ---------------------------------------------------------------
+  # 1) Autor autorizado -> processa normalmente.
+  # ---------------------------------------------------------------
   update-status:
-    if: github.event.issue.state == 'open'
+    if: >
+      github.event.issue.state == 'open' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
     runs-on: ubuntu-latest
 
     steps:
@@ -94,8 +107,9 @@ jobs:
           SERVICE_NAME: ${{ steps.apply.outputs.service_name }}
           STATUS_LABEL: ${{ steps.apply.outputs.status_label }}
 
-      - name: Comentar e fechar a Issue (sem mudança)
-        if: steps.apply.outputs.changed != 'true'
+      # Sem mudança porque o status já é o mesmo: caso benigno, fecha.
+      - name: Comentar e fechar a Issue (nada a fazer)
+        if: steps.apply.outputs.changed != 'true' && steps.apply.outputs.reason == 'no-op'
         uses: actions/github-script@v7
         with:
           script: |
@@ -103,11 +117,88 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: '⚠️ Não consegui aplicar esta atualização automaticamente (formulário não reconhecido, ou o status já é o mesmo — inclusive considerando uma mudança pendente ainda não aplicada). Verifique o formulário ou tente novamente.',
+              body: `ℹ️ **${process.env.SERVICE_NAME}** já está (ou já vai ficar, por uma mudança pendente) nesse status. Nada foi alterado.`,
             });
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
               state: 'closed',
+            });
+        env:
+          SERVICE_NAME: ${{ steps.apply.outputs.service_name }}
+
+      # Formulário não reconhecido: NÃO fecha a Issue. Num painel de
+      # hospital, uma falha de parsing fechada silenciosamente significa
+      # que alguém reportou "oxigênio inoperante" e o painel continuou
+      # verde sem ninguém perceber. Deixa aberta e marcada.
+      - name: Marcar Issue para atenção humana (falha de leitura)
+        if: steps.apply.outputs.changed != 'true' && steps.apply.outputs.reason != 'no-op'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['precisa-atencao'],
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                '⚠️ **Não consegui aplicar esta atualização automaticamente** e o painel **não** foi alterado.',
+                '',
+                'Motivo técnico: `' + (process.env.REASON || 'desconhecido') + '`.',
+                '',
+                'Esta Issue foi deixada **aberta** de propósito, com a etiqueta `precisa-atencao`,',
+                'para que uma pessoa verifique e atualize o status manualmente se necessário.',
+              ].join('\n'),
+            });
+        env:
+          REASON: ${{ steps.apply.outputs.reason }}
+
+  # ---------------------------------------------------------------
+  # 2) Autor NÃO autorizado -> responde com educação, fecha e tranca.
+  #    Nenhum código do repositório é executado neste caminho.
+  # ---------------------------------------------------------------
+  rejeitar-nao-autorizado:
+    if: >
+      github.event.issue.state == 'open' &&
+      !contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: [
+                'Obrigado pelo interesse! 🙂',
+                '',
+                'Este painel mostra o status de sistemas críticos de um hospital, então',
+                'apenas pessoas autorizadas da equipe podem alterá-lo. Nenhuma mudança foi',
+                'aplicada a partir desta Issue.',
+                '',
+                'Se você faz parte da equipe e deveria ter acesso, peça a um administrador',
+                'do repositório para adicioná-lo como colaborador.',
+              ].join('\n'),
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              state_reason: 'not_planned',
+            });
+            await github.rest.issues.lock({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              lock_reason: 'off-topic',
             });

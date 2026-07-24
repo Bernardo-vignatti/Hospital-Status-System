@@ -24,11 +24,37 @@ const STATUS_FILE = path.join(__dirname, '..', 'data', 'status.json');
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'services.json');
 
 const STATUS_LABEL_TO_CODE = {
-  Operante: 'up',
-  Inoperante: 'down',
-  Manutenção: 'maint',
-  Desconhecido: 'unknown',
+  operante: 'up',
+  inoperante: 'down',
+  manutencao: 'maint',
+  desconhecido: 'unknown',
 };
+
+// Normaliza um rótulo para comparação tolerante: remove acentos, espaços
+// extras e diferenças de maiúsculas/minúsculas. Isso evita a falha
+// SILENCIOSA que existia antes, em que uma pequena divergência entre o
+// texto do formulário e o "name" em config/services.json fazia a
+// atualização ser descartada sem ninguém perceber.
+function normalize(str) {
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+// Procura o serviço pelo nome exibido no formulário; se não achar, tenta
+// pelo id (permite escrever "oxigenio" direto no formulário).
+function findService(services, label) {
+  if (!label) return null;
+  const target = normalize(label);
+  return (
+    services.find((s) => normalize(s.name) === target) ||
+    services.find((s) => normalize(s.id) === target) ||
+    null
+  );
+}
 
 function extractField(body, label) {
   const lines = body.split('\n');
@@ -58,16 +84,15 @@ function main() {
   const statusLabel = extractField(body, 'Novo status');
 
   const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-  const serviceConfig = sistemaLabel
-    ? config.services.find((s) => s.name === sistemaLabel)
-    : null;
-  const statusCode = statusLabel ? STATUS_LABEL_TO_CODE[statusLabel] : null;
+  const serviceConfig = findService(config.services, sistemaLabel);
+  const statusCode = statusLabel ? STATUS_LABEL_TO_CODE[normalize(statusLabel)] : null;
 
   if (!serviceConfig || !statusCode) {
     console.error(
       `Não consegui interpretar o formulário (sistema="${sistemaLabel}", status="${statusLabel}").`
     );
     setOutput('changed', 'false');
+    setOutput('reason', !serviceConfig ? 'sistema-nao-reconhecido' : 'status-nao-reconhecido');
     return;
   }
 
@@ -77,6 +102,8 @@ function main() {
   if (!service) {
     console.error(`Serviço "${serviceConfig.id}" existe em config/services.json mas não em data/status.json.`);
     setOutput('changed', 'false');
+    setOutput('reason', 'servico-ausente-em-status-json');
+    setOutput('service_name', serviceConfig.name);
     return;
   }
 
@@ -86,6 +113,8 @@ function main() {
   if (current === statusCode) {
     console.log(`"${serviceConfig.name}" já está (ou já vai ficar, por mudança pendente) como "${statusCode}". Nada a fazer.`);
     setOutput('changed', 'false');
+    setOutput('reason', 'no-op');
+    setOutput('service_name', serviceConfig.name);
     return;
   }
 
@@ -99,7 +128,7 @@ function main() {
   console.log(`📝 "${serviceConfig.name}" → "${statusCode}" registrado na fila. Será aplicado no próximo ciclo de atualização.`);
   setOutput('changed', 'true');
   setOutput('service_name', serviceConfig.name);
-  setOutput('status_label', statusLabel);
+  setOutput('status_label', String(statusLabel).trim());
 }
 
 main();

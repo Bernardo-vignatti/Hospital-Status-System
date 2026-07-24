@@ -99,4 +99,85 @@ if (fs.existsSync(PENDING_FILE)) {
   });
 }
 
-console.log(`✅ data/status.json e config/services.json são válidos (${data.services.length} serviços).`);
+
+// ---------------------------------------------------------------------
+// Consistência entre o formulário de Issue e config/services.json.
+//
+// Por que isso existe: as opções do dropdown em
+// .github/ISSUE_TEMPLATE/status-update.yml são texto estático. Se alguém
+// renomear um serviço em config/services.json (ou acrescentar um novo) e
+// esquecer do formulário, a atualização via Issue passa a falhar EM
+// SILÊNCIO para aquele serviço — a pessoa reporta "gerador inoperante" e
+// o painel continua verde. Este check quebra o CI nesse caso.
+// Parsing simples de linhas (sem dependência externa, roda em Node puro).
+// ---------------------------------------------------------------------
+const TEMPLATE_FILE = path.join(
+  __dirname, '..', '.github', 'ISSUE_TEMPLATE', 'status-update.yml'
+);
+
+function normalizeLabel(str) {
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function readDropdownOptions(lines, fieldId) {
+  const idIdx = lines.findIndex((l) => l.trim() === `id: ${fieldId}`);
+  if (idIdx === -1) return null;
+  const optIdx = lines.findIndex((l, i) => i > idIdx && l.trim() === 'options:');
+  if (optIdx === -1) return null;
+  const options = [];
+  for (let i = optIdx + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^\s+-\s+(.+?)\s*$/);
+    if (!m) break;
+    options.push(m[1].replace(/^["']|["']$/g, ''));
+  }
+  return options;
+}
+
+if (fs.existsSync(TEMPLATE_FILE)) {
+  const lines = fs.readFileSync(TEMPLATE_FILE, 'utf8').split('\n');
+  const templateSystems = readDropdownOptions(lines, 'sistema');
+
+  if (!templateSystems || templateSystems.length === 0) {
+    fail('não consegui ler as opções do dropdown "sistema" em .github/ISSUE_TEMPLATE/status-update.yml');
+  }
+
+  const configNames = new Map(
+    config.services.map((s) => [normalizeLabel(s.name), s.name])
+  );
+
+  templateSystems.forEach((opt) => {
+    if (!configNames.has(normalizeLabel(opt))) {
+      fail(
+        `ISSUE_TEMPLATE oferece "${opt}", que não corresponde a nenhum "name" em ` +
+        `config/services.json. Isso faria a atualização via Issue falhar em silêncio. ` +
+        `Nomes válidos: ${config.services.map((s) => s.name).join(' | ')}`
+      );
+    }
+  });
+
+  const templateSet = new Set(templateSystems.map(normalizeLabel));
+  config.services.forEach((s) => {
+    if (!templateSet.has(normalizeLabel(s.name))) {
+      fail(
+        `o serviço "${s.name}" existe em config/services.json mas não aparece no ` +
+        `dropdown de .github/ISSUE_TEMPLATE/status-update.yml — ninguém conseguiria ` +
+        `reportar mudança de status dele.`
+      );
+    }
+  });
+
+  const statusOptions = readDropdownOptions(lines, 'status');
+  const VALID_LABELS = ['operante', 'inoperante', 'manutencao', 'desconhecido'];
+  (statusOptions || []).forEach((opt) => {
+    if (!VALID_LABELS.includes(normalizeLabel(opt))) {
+      fail(`ISSUE_TEMPLATE oferece o status "${opt}", que scripts/apply-status-change.js não sabe traduzir.`);
+    }
+  });
+}
+
+console.log(`✅ status.json, services.json e o formulário de Issue estão consistentes (${data.services.length} serviços).`);

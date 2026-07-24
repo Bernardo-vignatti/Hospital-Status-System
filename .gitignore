@@ -1,0 +1,24 @@
+# Segredos locais do Wrangler (Cloudflare Workers) — NUNCA commitar.
+# É aqui que o GITHUB_TOKEN e o MANUAL_TRIGGER_SECRET ficam quando você
+# roda `wrangler dev` localmente.
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Dependências e artefatos de build
+node_modules/
+.wrangler/
+dist/
+
+# Lixo de sistema operacional / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*

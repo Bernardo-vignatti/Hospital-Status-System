@@ -21,6 +21,25 @@
 // servidos como sempre pelo GitHub Pages; este Worker só é responsável
 // por manter data/status.json e data/pending-changes.json atualizados.
 
+// Comparação de segredo em tempo constante. Comparar strings com `!==`
+// vazaria informação por tempo de resposta (o motor pára no primeiro
+// byte diferente). Como SHA-256 sempre produz 32 bytes, os dois lados
+// têm o mesmo tamanho e o laço abaixo roda sempre inteiro.
+async function sha256(str) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return new Uint8Array(digest);
+}
+
+async function secretMatches(provided, expected) {
+  if (typeof provided !== 'string' || typeof expected !== 'string' || expected.length === 0) {
+    return false;
+  }
+  const [a, b] = await Promise.all([sha256(provided), sha256(expected)]);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
 const MAX_HISTORY = 30;
 const TIMEOUT_MS = 8000;
 const VALID_STATUS = ['up', 'down', 'maint', 'unknown'];
@@ -204,21 +223,33 @@ export default {
   },
 
   // Endpoint HTTP só para teste manual (dispara o mesmo ciclo do cron).
-  // Protegido por um token simples via header, pra não deixar aberto.
+  //
+  // Endurecido: (1) comparação do segredo em tempo constante,
+  // (2) nenhuma rota responde nada identificável — qualquer coisa que
+  // não seja um POST /run autenticado recebe 404 puro, para o Worker não
+  // anunciar sua existência nem a qual sistema pertence,
+  // (3) erros internos não são devolvidos ao cliente (ficam no
+  // `wrangler tail`), para não vazar detalhe da API do GitHub.
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === '/run' && request.method === 'POST') {
-      const auth = request.headers.get('Authorization');
-      if (!env.MANUAL_TRIGGER_SECRET || auth !== `Bearer ${env.MANUAL_TRIGGER_SECRET}`) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-      try {
-        const log = await runCycle(env);
-        return new Response(log.join('\n'), { status: 200 });
-      } catch (err) {
-        return new Response('Erro: ' + err.message, { status: 500 });
-      }
+    const notFound = new Response('Not found', { status: 404 });
+
+    if (url.pathname !== '/run' || request.method !== 'POST') return notFound;
+
+    const auth = request.headers.get('Authorization') || '';
+    const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (!(await secretMatches(provided, env.MANUAL_TRIGGER_SECRET || ''))) {
+      // 404 em vez de 401: quem não tem o segredo nem descobre que a
+      // rota existe.
+      return notFound;
     }
-    return new Response('Hospital status worker ok. POST /run para testar manualmente.', { status: 200 });
+
+    try {
+      const log = await runCycle(env);
+      return new Response(log.join('\n'), { status: 200 });
+    } catch (err) {
+      console.error('Erro no ciclo manual:', err);
+      return new Response('Erro interno. Veja `npx wrangler tail`.', { status: 500 });
+    }
   },
 };

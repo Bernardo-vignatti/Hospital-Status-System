@@ -12,8 +12,11 @@ Painel público e estático de status da infraestrutura crítica do hospital
 (gerador, oxigênio, rede, prontuário eletrônico, elevadores, climatização,
 água). Sem login ou senha no navegador de propósito — qualquer pessoa pode
 consultar. A segurança de **quem pode mudar o status** vem do próprio
-GitHub: login, 2FA e permissões de colaborador (quem pode abrir uma Issue
-no repositório).
+GitHub: login, 2FA e a checagem de `author_association` feita pelo
+workflow (ver [Segurança](#segurança)). ⚠️ Em repositório **público**,
+qualquer conta do GitHub consegue *abrir* uma Issue — por isso o
+workflow verifica explicitamente se quem abriu é dono, membro ou
+colaborador antes de alterar qualquer coisa.
 
 O site (puro HTML/CSS/JS, sem frameworks) faz polling de `data/status.json`
 a cada ~30 segundos e atualiza a interface sozinho, sem precisar de F5.
@@ -214,8 +217,87 @@ ser aberta a qualquer momento, ela nunca escreve diretamente na timeline
 nem a faz avançar fora de hora — ela só entra na fila, e quem avança a
 timeline é sempre o ciclo de ~5 min.
 
-A segurança vem de quem pode abrir uma Issue no repositório (colaboradores
-autorizados); o formulário elimina erro de digitação/formatação no JSON.
+O formulário elimina erro de digitação/formatação no JSON. Issues abertas
+por quem **não** é colaborador são respondidas, fechadas e trancadas
+automaticamente, sem alterar nada (ver [Segurança](#segurança)). E se o
+formulário não puder ser interpretado, a Issue fica **aberta** com a
+etiqueta `precisa-atencao` em vez de ser fechada em silêncio — num painel
+de sistemas críticos, uma falha invisível é pior que uma falha barulhenta.
+
+## Segurança
+
+Resumo do modelo de ameaças deste projeto, já que o repositório é público
+e o painel descreve infraestrutura crítica de um hospital.
+
+**Quem pode mudar o status.** Só quem é `OWNER`, `MEMBER` ou
+`COLLABORATOR` do repositório. Isso é verificado em
+`.github/workflows/update-status.yml` via
+`github.event.issue.author_association`, no `if:` do job — ou seja, para
+uma pessoa não autorizada o código do repositório nem chega a ser
+executado. Um segundo job responde educadamente, fecha e tranca a Issue.
+
+> Sem essa checagem, **qualquer conta do GitHub no mundo** poderia marcar
+> "Gerador de Energia = Inoperante" no painel, porque em repositório
+> público abrir Issue não exige ser colaborador. Esta é a proteção mais
+> importante do projeto — não a remova ao mexer no workflow.
+
+**Segredos.** Nada sensível vai para o repositório:
+
+- `GITHUB_TOKEN` e `MANUAL_TRIGGER_SECRET` vivem só como *secrets* do
+  Worker (`wrangler secret put`), nunca em `wrangler.toml`.
+- O `.gitignore` bloqueia `.dev.vars` (onde o `wrangler dev` guarda esses
+  mesmos segredos localmente), `.env` e `node_modules/`.
+- O PAT deve ser **fine-grained**, limitado a **este** repositório, com
+  **apenas** `Contents: Read and write` — nunca `Workflows`, `Actions`
+  ou `Administration`, senão um vazamento permitiria alterar as próprias
+  automações.
+- Defina **expiração de 90 dias** no token e rotacione na data. Quando
+  ele expirar, o ciclo pára — e o site passa a exibir o aviso de dados
+  desatualizados descrito abaixo.
+
+**Aviso de dados obsoletos.** Se o ciclo de ~5 min parar (token expirado,
+conta suspensa, erro no cron), o site continuaria mostrando o último
+status conhecido como se fosse informação atual. Para evitar isso,
+`index.html` e `servico.html` passam a destacar em amarelo, após ~16
+minutos sem atualização, que a atualização automática parou e os dados
+podem estar desatualizados.
+
+**Endpoint manual do Worker.** `POST /run` compara o segredo em tempo
+constante (hash SHA-256 + comparação byte a byte) e responde `404` a
+qualquer outra rota, método ou segredo errado — o Worker não anuncia sua
+própria existência.
+
+**Falha silenciosa do formulário.** `scripts/validate.js` quebra o CI se
+as opções do dropdown em `.github/ISSUE_TEMPLATE/status-update.yml`
+deixarem de bater com os `name` de `config/services.json`. Antes dessa
+checagem, renomear um serviço fazia toda atualização via Issue daquele
+sistema ser descartada sem aviso.
+
+**Exposição de informação (decisão de gestão, não técnica).** O
+repositório público mantém um registro permanente, com carimbo de tempo
+a cada 5 minutos, de quando gerador, oxigênio, água e elevadores
+estiveram inoperantes, associado a um hospital identificável. Isso vale
+ser validado com a direção e o responsável por LGPD antes de seguir
+público. Se a decisão for fechar, note que o GitHub Pages a partir de
+repositório **privado** exige plano pago — a alternativa gratuita é
+publicar o site pelo **Cloudflare Pages** (mesma conta Free do Worker),
+que serve o conteúdo de um repositório privado sem custo.
+
+**Recomendações de configuração no GitHub (grátis, via Settings):**
+
+1. **2FA obrigatório** para todos os colaboradores.
+2. Revisar periodicamente **Settings → Collaborators** — o acesso de
+   escrita ao repositório é, na prática, o acesso ao painel.
+3. Ativar **Settings → Code security → Secret scanning** e **push
+   protection** (gratuitos em repositório público): bloqueiam o commit
+   acidental de um token.
+4. Em **Settings → Actions → General**, manter "Read and write
+   permissions" apenas se necessário, e marcar "Require approval for all
+   external contributors".
+5. Opcional, mas recomendado: fixar as actions de terceiros por SHA
+   completo (`actions/checkout@<sha>`) em vez de `@v4`, para se proteger
+   de uma tag comprometida.
+
 
 ## Estados possíveis
 
@@ -308,5 +390,11 @@ serviço.
   este arquivo não é mais aplicado por nenhum workflow. Pode ser removido
   ou mantido só como referência de responsáveis pelo sistema.
 - **`config/services.json`**: preencher `url` + `enabled: true` quando
-  houver um endpoint público para `rede` e/ou `prontuário` — os únicos
-  dois que fazem sentido checar por HTTP (os demais são físicos).
+  houver um endpoint público para `prontuário` — junto com `site`, é o
+  único que faz sentido checar por HTTP (os demais são físicos).
+- **Serviço "Rede de Dados / Internet"**: existia no formulário de Issue
+  mas nunca existiu em `config/services.json`, então reportá-lo nunca
+  funcionou. Foi removido do formulário. Para reativá-lo, siga
+  "[Adicionando um novo serviço](#adicionando-um-novo-serviço)" e
+  acrescente a mesma opção ao dropdown do template — o CI agora cobra
+  essa consistência.

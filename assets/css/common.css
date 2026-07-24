@@ -31,6 +31,12 @@ body{ background:var(--bg); color:var(--ink); font-family:'Inter', sans-serif; -
 h1{ font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:30px; margin:0 0 8px; letter-spacing:-0.01em; color:#fff; }
 .sub{ color:#9FADC0; font-size:14px; margin:0; font-family:'IBM Plex Mono', monospace; }
 
+/* Aviso de dados obsoletos: se o ciclo de ~5 min parar (token do Worker
+   expirado, conta suspensa, cron falhando), o site continuaria mostrando
+   o último status conhecido como se fosse atual — perigoso num painel de
+   sistemas críticos. Esta classe deixa isso explícito na tela. */
+.sub.stale{ color:#FFC44D; font-weight:600; }
+
 /* ---- Link "voltar" no topo (usado na página de detalhe) ---- */
 .back-link{
   display:inline-flex; align-items:center; gap:7px; color:#C8D2E0; text-decoration:none;

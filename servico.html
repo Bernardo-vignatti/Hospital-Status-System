@@ -161,10 +161,25 @@ function renderAll(service){
   renderUptimeGrid(service);
 }
 
+// Se o ciclo de ~5 min parar de rodar, o painel não pode continuar
+// exibindo o último status como se fosse informação atual. Depois deste
+// limite o site avisa explicitamente que os dados podem estar obsoletos.
+const STALE_AFTER_MS = 16 * 60 * 1000; // ~3 ciclos perdidos
+
+function applyStaleWarning(sub, updatedAtDate){
+  const ageMs = Date.now() - updatedAtDate.getTime();
+  const stale = ageMs > STALE_AFTER_MS;
+  sub.classList.toggle('stale', stale);
+  return stale
+    ? ' ⚠️ atualização automática parada — dados podem estar desatualizados'
+    : '';
+}
+
 function updateClock(){
   const sub = document.getElementById('sub-updated');
   if(!lastUpdatedAtDate || !sub) return;
-  sub.textContent = `Atualizado ${HSS.relativeLabel(lastUpdatedAtDate)} · próxima em ${HSS.nextUpdateLabel(lastUpdatedAtDate)}`;
+  sub.textContent = `Atualizado ${HSS.relativeLabel(lastUpdatedAtDate)} · próxima em ${HSS.nextUpdateLabel(lastUpdatedAtDate)}`
+    + applyStaleWarning(sub, lastUpdatedAtDate);
 }
 
 function showNotFound(){
