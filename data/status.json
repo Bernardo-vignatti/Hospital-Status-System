@@ -1,14 +1,9 @@
 {
-  "updatedAt": "2026-07-28T07:25:06.691Z",
+  "updatedAt": "2026-07-28T07:30:06.782Z",
   "services": [
     {
       "id": "gerador",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
@@ -152,6 +147,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
           "responseTime": null
         }
       ]
@@ -161,11 +161,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
           "responseTime": null
         },
@@ -308,17 +303,17 @@
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
           "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
+          "responseTime": null
         }
       ]
     },
     {
       "id": "site",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": 39
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
@@ -463,17 +458,17 @@
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
           "responseTime": 60
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
+          "responseTime": 190
         }
       ]
     },
     {
       "id": "prontuario",
       "history": [
-        {
-          "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
         {
           "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
@@ -617,6 +612,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
           "responseTime": null
         }
       ]
@@ -626,11 +626,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
           "responseTime": null
         },
@@ -772,6 +767,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
           "responseTime": null
         }
       ]
@@ -781,11 +781,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
           "responseTime": null
         },
@@ -927,6 +922,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
           "responseTime": null
         }
       ]
@@ -936,11 +936,6 @@
       "history": [
         {
           "status": "up",
-          "checkedAt": "2026-07-28T05:00:54.878Z",
-          "responseTime": null
-        },
-        {
-          "status": "up",
           "checkedAt": "2026-07-28T05:05:54.579Z",
           "responseTime": null
         },
@@ -1082,6 +1077,11 @@
         {
           "status": "up",
           "checkedAt": "2026-07-28T07:25:06.691Z",
+          "responseTime": null
+        },
+        {
+          "status": "up",
+          "checkedAt": "2026-07-28T07:30:06.782Z",
           "responseTime": null
         }
       ]
